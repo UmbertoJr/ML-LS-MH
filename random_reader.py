@@ -2,7 +2,6 @@ import random
 import scipy.spatial.distance
 import numpy as np
 from hide_output import HideOutput
-from instance_solver import Solver
 
 
 class RandomInstancesGenerator:
@@ -46,8 +45,3 @@ class RandomInstancesGenerator:
         distance = np.round((distance.T + distance) * 10000, 0) / 10000
         return distance
 
-    @staticmethod
-    def compute_optimal_solution(positions):
-        with HideOutput():
-            _, opt = Solver.solve(positions)
-        return opt
