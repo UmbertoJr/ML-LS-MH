@@ -15,6 +15,8 @@ cl_method = CandidateList.Method.NearestNeighbour
 ml_model = MLAdd.MLModel.SVM
 improvement = "ILS"  # 2-Opt or ILS
 
+# todo : Add the results of ILS search for SVM and Optmal method. Show the difference between the two methods with reduced and complete approach
+
 
 
 reader = ReadTSPlib()
