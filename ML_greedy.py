@@ -267,24 +267,6 @@ class MLGreedy:
         }
         return data_to_return
         
-        # # qui si lancia il 2-opt completo
-        # while True:
-        #     X_improved_complete, improvement = MLGreedy.two_opt(X, free_nodes, fixed_edges, distance_matrix, CLs)
-        #     if improvement == 0:
-        #         time_complete = time.time - t0
-        #         break
-                
-        # changed_edges_LS = MLGreedy.find_changed(fixed_edges, X_improved_complete)
-
-        # data_to_return = {
-        #     "sol after reduced 2-Opt": X_improved, 
-        #     "time reduced 2-Opt": time_simple, 
-        #     "": operations_LS, 
-        #     "": changed_edges_LS, 
-        #     "": X_improved_complete, 
-        #     "": time_complete
-        # }
-        # return 
 
     @staticmethod
     def two_opt_reduced(X, free_nodes, fixed_edges, distance_matrix, CLs, tour):
@@ -429,183 +411,175 @@ class MLGreedy:
         # print(X[a_], X[tour[a+1]], X[b_], X[tour[b+1]], X[c_], X[tour[c+1]], X[d_], X[tour[d-n]])
 
         # operate the double bridge on tour and X
-        return X, create_tour_from_X(X), new_cost, n
+        return X, create_tour_from_X(X), new_cost, 1
     
+    @staticmethod
+    def run_ILS(X, distance_matrix, free_nodes, fixed_edges, CLs, type_2opt="reduced", opt_len=None):
+        t0 = time.time()
+        if type_2opt=="reduced":
+            two_opt_fun = MLGreedy.two_opt_reduced
+        else:
+            two_opt_fun = MLGreedy.two_opt_complete
+
+        # copy the X variable to avoid changes on the initial value
+        X_c = np.copy(X)
+        tour_initial = create_tour_from_X(X_c) # it created the tour from the X matrix and computed its objective function
+        initial_len = compute_tour_lenght(tour_initial, distance_matrix)
+        tour_lens_list = [initial_len]
+        current_len = initial_len
+        current_tour = tour_initial
+        ops_used = 0
+
+        # Here it starts the first local search to improve the initial solution
+        add_impro = 0
+        while True:
+                
+            X_c, improvement, ops_plus, current_tour = two_opt_fun(X_c, free_nodes,
+                                                                   fixed_edges, distance_matrix, 
+                                                                   CLs, current_tour)
+            ops_used += ops_plus                
+            current_len -= improvement
+            add_impro += improvement
+            if improvement==0:
+                break
+        
+        # update the variable used during the ILS 
+        best_tour_so_far = current_tour
+        best_len_so_far = current_len
+        tour_lens_list.append(best_len_so_far)
+        temperature = initial_len * 10
+        counter_temperature = 0
+        repeat_temperature = 1
+        probabilities = []
+        count_iterations = 0
+        avg_probs = 0
+
+        # Here it starts the ILS
+        while temperature>0.001:
+            # Double Bridge
+            X_proposal, tour_proposal, len_proposal,  ops_plus = MLGreedy.double_bridge(X_c, free_nodes, fixed_edges,
+                                                                                        distance_matrix, CLs, 
+                                                                                        current_tour, current_len)
+            
+            ops_used += ops_plus
+            add_impro = 0
+            # Here it starts the second local search to improve the solution after the double bridge
+            while True:
+                    
+                X_proposal, improvement, ops_plus, tour_proposal = two_opt_fun(X_proposal, free_nodes, fixed_edges,
+                                                                               distance_matrix, CLs, tour_proposal)
+                ops_used += ops_plus
+                len_proposal -= improvement
+                add_impro += improvement
+                if improvement == 0:
+                    break
+
+            # Here it checks if the new solution is accepted or not
+            if np.exp(-(len_proposal-current_len)/temperature) > np.random.uniform():
+                X_c = X_proposal
+                current_tour = tour_proposal
+                current_len = len_proposal
+                tour_lens_list.append(current_len)
+
+            # Here it updates the temperature used for the ILS
+            count_iterations += 1
+            counter_temperature +=1
+            probabilities.append(np.exp(-(len_proposal-best_len_so_far)/temperature))
+            
+            if counter_temperature>repeat_temperature:
+                temperature *= 0.5
+                counter_temperature = 0
+                avg_probs = np.mean(probabilities)
+                
+                if avg_probs<0.7:
+                    repeat_temperature = 10
+                    if avg_probs < 0.3:
+                        repeat_temperature = 50
+                        if avg_probs < 0.1:
+                            repeat_temperature = 100
+
+                probabilities = []
+            
+
+            # Here it updates the best solution found so far
+            if current_len < best_len_so_far:
+                best_tour_so_far = current_tour
+                best_len_so_far = current_len
+                print(f"\r$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ NEW BEST = {best_len_so_far}   "\
+                      f"iteration {count_iterations}  gap = {(best_len_so_far - opt_len)/opt_len * 100}   "
+                      f"temperature {temperature}    average prob {avg_probs}")
+                X_c_best = X_proposal
+                
+                # Here it checks if the solution is optimal in case it breaks the ILS
+                if opt_len is not None:
+                    if (current_len - opt_len )/opt_len*100< 0.0001:
+                        print("breaking!")
+                        break
+                
+        time_ils = time.time() - t0
+        print(f"\r###########FINAL RESULT ########## BEST LEN = {best_len_so_far}    last_iteration {count_iterations} "
+              f" final gap =  {(best_len_so_far - opt_len)/opt_len * 100}   temperature {temperature}    average prob {avg_probs}  "
+              f"ops used {ops_used}")
+        return best_tour_so_far, X_c_best, tour_lens_list, time_ils, ops_used
+
 
     @staticmethod
     def improve_ILS_solution(X, X_intermediate, distance_matrix, CLs, opt_len):
         fixed_edges = MLGreedy.get_fixed_edges(X_intermediate)
         free_nodes = MLGreedy.get_free_nodes(X_intermediate)
-        
-        #  qui si lancia ILS ridotto
-        t0 = time.time()
-
-        X_c_reduced = np.copy(X)
-        tour_reduced = create_tour_from_X(X_c_reduced)
-        initial_len = compute_tour_lenght(tour_reduced, distance_matrix)
-        tour_lens_reduced = [initial_len]
-        new_len = initial_len
-        count_reduced = 0
-        ops_reduced = 0
-        add_impro = 0
-        while True:
-                
-            X_c_reduced, improvement, ops_plus, tour_reduced = MLGreedy.two_opt_reduced(X_c_reduced, free_nodes, fixed_edges,
-                                                                                        distance_matrix, CLs, tour_reduced)
-            ops_reduced += ops_plus                
-            new_len -= improvement
-            add_impro += improvement
-            if improvement==0:
-                break
-        # print(f"improvement 2-opt = {add_impro}")
-        # print(f"new len={new_len}")
-        best_tour_so_far_reduced = create_tour_from_X(X_c_reduced)
-        current_len = compute_tour_lenght(best_tour_so_far_reduced, distance_matrix)
-        assert current_len == new_len, f"{current_len} and {new_len} should be equal"
-        best_len_so_far = current_len
-        tour_lens_reduced.append(best_len_so_far)
-        temperature = initial_len * 10
-        print(f'initial temperature = {temperature}')
-        # print(tour_reduced)
-        print(f"initial len = {current_len}")
-        count_temperature = 0
-        probabilities = []
-        while temperature>0.001:
-            # print("\nInitial Tour is:")
-            # print(tour_reduced)
-            X_improved, new_tour, new_len, ops_plus = MLGreedy.double_bridge(X_c_reduced, free_nodes, fixed_edges,
-                                                                              distance_matrix, CLs, 
-                                                                              tour_reduced, current_len)
-            
-            ops_reduced += ops_plus
-            # print("new tour is:")
-            # print(new_tour)
-            add_impro = 0
-            while True:
-                    
-                X_improved, improvement, ops_plus, new_tour = MLGreedy.two_opt_reduced(X_improved, free_nodes, fixed_edges,
-                                                                                       distance_matrix, CLs, new_tour)
-                ops_reduced += ops_plus
-                new_len = new_len - improvement
-                add_impro += improvement
-                if improvement == 0:
-                    break
-            # print(f"improvement 2-opt = {add_impro}")
-            # print(f"new len={new_len}")
-            count_reduced += 1
-            count_temperature +=1
-            if count_temperature>100:
-                temperature *= 0.5
-                count_temperature = 0
-                print(f"############ temperature = {temperature}")
-                print(f"############ average probability = {np.mean(probabilities)}\n")
-                probabilities = []
-            # print(f"probability = {np.exp(-(new_len-best_len_so_far)/temperature)}")
-            probabilities.append(np.exp(-(new_len-current_len)/temperature))
-            if new_len < best_len_so_far:
-                tour_ = new_tour[::-1]
-                assert check_feasibility(tour_), f"Problem the tour is not feasible {tour_}"
-                
-                best_tour_so_far_reduced = new_tour
-                best_len_so_far = new_len
-                X_c_reduced = X_improved
-                tour_reduced = new_tour
-                current_len = new_len
-                print(f"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ NEW BEST = {current_len}   iteration {count_reduced}  opt len = {opt_len}")
-                tour_lens_reduced.append(current_len)
-                if current_len - opt_len == 0:
-                    print("breaking!")
-                    break
-                # print(improvement)
-                # print(ops_reduced)
-                # break
-            elif np.exp(-(new_len-best_len_so_far)/temperature) > np.random.uniform():
-                X_c_reduced = X_improved
-                tour_reduced = new_tour
-                current_len = new_len
-                tour_lens_reduced.append(current_len)
-                # print(improvement)
-                # print(ops_reduced)
-            # tour_reduced = create_tour_from_X(X_improved)
-            # X_c_reduced = X_improved
-            # tour_reduced = create_tour_from_X(X_c_reduced)
-            # assert check_feasibility(tour_reduced), "Problem the tour is not feasible"
-        
-
-        time_reduced = time.time() - t0
-
-        print(tour_lens_reduced)
-        print(f"{count_reduced} iteration ILS ")
-        print(f"best result = {min(tour_lens_reduced)}")
-        #  qui si lancia il 2-opt free
-        t0 = time.time()
-        X_c_free = np.copy(X)
-        tour_free = create_tour_from_X(X_c_free)
-        count_free = 0
-        ops_free = 0
-        # while True:
-        #     # tour_free = roll_the_tour(tour_free)
-        #     # X_c_free = X_c_free[::-1]
-        #     X_improved, improvement, ops_plus = MLGreedy.two_opt_free(X_c_free, free_nodes, fixed_edges, 
-        #                                                               distance_matrix, CLs, tour_free)
-        #     X_c_free = X_improved
-        #     tour_free = create_tour_from_X(X_c_free)
-        #     tour_free = tour_free[::-1]
-        #     assert check_feasibility(tour_free), "Problem the tour is not feasible"
-        #     ops_free += ops_plus
-        #     if improvement == 0 and count_free > 1:
-        #         time_free = time.time() - t0
-        #         break
-        #     else:
-        #         count_free += 1
-
-        
 
 
-        #  qui si lancia il 2-opt complete
-        t0 = time.time()
-        X_c_complete = np.copy(X) 
-        tour_complete = create_tour_from_X(X_c_complete)
-        count_complete = 0
-        ops_complete = 0
-        # while True:
-        #     # tour_complete = roll_the_tour(tour_complete)
-        #     X_improved, improvement, ops_plus = MLGreedy.two_opt_complete(X_c_complete, free_nodes, fixed_edges, 
-        #                                                                   distance_matrix, CLs, tour_complete)
-            
-        #     X_c_complete = X_improved
-        #     tour_complete = create_tour_from_X(X_improved)
-        #     assert check_feasibility(tour_complete), "Problem the tour is not feasible"
-        #     ops_complete += ops_plus
-        #     if improvement == 0:
-        #         time_complete = time.time() - t0
-        #         break
-        #     else:
-        #         count_complete += 1
+        print(f"\n\nRunning approach REDUCED")
+        # Run of the ILS using the reduced 2-opt
+        best_tour_reduced, X_c_reduced, tour_lens_reduced, time_reduced, ops_reduced = MLGreedy.run_ILS(X, distance_matrix,
+                                                                                                        free_nodes, fixed_edges,
+                                                                                                        CLs, type_2opt="reduced",
+                                                                                                        opt_len=opt_len)
+
+        print(f"\n\nRunning approach FREE")
+        # Run of the ILS using the free 2-opt
+        best_tour_free, X_c_free, tour_lens_free, time_free, ops_free = MLGreedy.run_ILS(X, distance_matrix,
+                                                                                        free_nodes, fixed_edges,
+                                                                                        CLs, type_2opt="free",
+                                                                                        opt_len=opt_len)
+
+
+        print(f"\n\nRunning approach COMPLETE")
+        # Run of the ILS using the complete 2-opt
+        best_tour_complete, X_c_complete, tour_lens_complete, time_complete, ops_complete = MLGreedy.run_ILS(X, distance_matrix,
+                                                                                                            free_nodes, fixed_edges,
+                                                                                                            CLs, type_2opt="complete",
+                                                                                                            opt_len=opt_len)
 
 
         data_to_return = {
             "tour Constructive": create_tour_from_X(X),
             "X Constructive": X, 
 
-            "tour ILS reduced": best_tour_so_far_reduced,
+            "tour ILS reduced": best_tour_reduced,
             "X ILS reduced": X_c_reduced,
             "list ILS reduced solutions": tour_lens_reduced,
 
-            "tour ILS free": tour_free, 
+            "tour ILS free": best_tour_free,
             "X ILS free": X_c_free,
-            "list ILS free solutions": tour_lens_reduced,
-
-            "tour ILS complete": tour_complete,
+            "list ILS free solutions": tour_lens_free,
+            # "tour ILS free": best_tour_reduced,
+            # "X ILS free": X_c_reduced,
+            # "list ILS free solutions": tour_lens_reduced,
+            
+            "tour ILS complete": best_tour_complete,
             "X ILS complete": X_c_complete,
-            "list ILS complete solutions": tour_lens_reduced,
+            "list ILS complete solutions": tour_lens_complete,
+
             
             "Time ILS reduced": time_reduced,
-            # "Time ILS free": time_free,
-            # "Time ILS complete": time_complete,
+            "Time ILS free": time_free,
+            # "Time ILS free": time_reduced,
+            "Time ILS complete": time_complete,
 
             "Ops ILS reduced":ops_reduced,
             "Ops ILS free":ops_free,
+            # "Ops ILS free":ops_reduced,
             "Ops ILS complete":ops_complete,
 
             "free_nodes": free_nodes,

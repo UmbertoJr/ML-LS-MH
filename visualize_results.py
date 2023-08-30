@@ -2,8 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-methods = ["Baseline", "Nearest Neighbour", "Linear", "Linear Underbalanced", 
-           "Ensemble", "SVM", "Optimal Tour"]
+methods = ["Baseline", "Nearest Neighbour", "Linear", "SVM", 
+           "Ensemble", "Optimal Tour"]
 
 for method in methods:
     df = pd.read_csv(f'./results/{method}_ls.csv', index_col=0)
@@ -26,15 +26,15 @@ for method in methods:
     print("\nGap")
     print(df[gap_columns].mean())
 
-    print("\nTime")
-    print(time_df.sum())
-    print(time_df.mean())
+    # print("\nTime")
+    # print(time_df.sum())
+    # print(time_df.mean())
 
     print("\nOperations")
-    # print(df[ops_columns].mean())
-    print(df[ops_columns].sum())
+    # # print(df[ops_columns].mean())
+    # print(df[ops_columns].sum())
     print(df[ops_columns].sum()/(df[ops_columns].sum().max()))
 
-    print("\nRemoved edges from first phase")
+    print("\nRemoved edges")
     print(df[removed_columns].sum())
     print("\n====================")

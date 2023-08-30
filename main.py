@@ -15,8 +15,7 @@ cl_method = CandidateList.Method.NearestNeighbour
 ml_model = MLAdd.MLModel.SVM
 improvement = "ILS"  # 2-Opt or ILS
 
-# todo : Add the results of ILS search for SVM and Optmal method. Show the difference between the two methods with reduced and complete approach
-
+# todo : Run the experiment for all the ML model available
 
 
 reader = ReadTSPlib()
@@ -24,7 +23,7 @@ reader = ReadTSPlib()
 # for ml_model in [MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
 #                  MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
 #                  MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble, MLAdd.MLModel.OptimalTour]:
-for ml_model in [MLAdd.MLModel.OptimalTour]:
+for ml_model in [MLAdd.MLModel.NearestNeighbour ,MLAdd.MLModel.OptimalTour]:
     
     print('\n\n')
     print(f'--------------------------------------------------')
@@ -50,8 +49,9 @@ for ml_model in [MLAdd.MLModel.OptimalTour]:
     for instance in reader.instances_generator():
         n_points, positions, distance_matrix, name, optimal_tour = instance
 
-        if n_points < 500:
-            continue
+        print(f"\n INSTANCE: {name}")
+        # if n_points < 500:
+            # continue
         opt_tour = np.append(optimal_tour, optimal_tour[0])
         opt_len = compute_tour_lenght(opt_tour,distance_matrix)
 
@@ -64,16 +64,16 @@ for ml_model in [MLAdd.MLModel.OptimalTour]:
         # mlg_tour = create_tour_from_X(experiments_results["tour"])
         mlg_tour = experiments_results["tour Constructive"]
 
-        print(mlg_tour)
-        print(f"optimal len to achieve = {opt_len}")
-        print(experiments_results[f"tour {improvement} reduced"])
-        print(compute_difference_tour_length(opt_tour, experiments_results[f"tour {improvement} reduced"], distance_matrix)*100)
+        # print(mlg_tour)
+        # print(f"optimal len to achieve = {opt_len}")
+        # print(experiments_results[f"tour {improvement} reduced"])
+        # print(compute_difference_tour_length(opt_tour, experiments_results[f"tour {improvement} reduced"], distance_matrix)*100)
 
-        plot_points_sol_intermediate(positions, experiments_results["X Constructive"], 
-                                     experiments_results["X Intermediate"], mlg_tour)
-        plot_points_sol_intermediate(positions, experiments_results[f"X {improvement} reduced"], 
-                                     experiments_results["X Intermediate"],
-                                     experiments_results[f"tour {improvement} reduced"])
+        # plot_points_sol_intermediate(positions, experiments_results["X Constructive"], 
+        #                              experiments_results["X Intermediate"], mlg_tour)
+        # plot_points_sol_intermediate(positions, experiments_results[f"X {improvement} reduced"], 
+        #                              experiments_results["X Intermediate"],
+        #                              experiments_results[f"tour {improvement} reduced"])
         
         # plot_points_sol_intermediate(positions, experiments_results[f"X {improvement} free"], 
         #                              experiments_results["X Intermediate"],
