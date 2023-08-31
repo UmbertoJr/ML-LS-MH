@@ -13,17 +13,17 @@ from drawer import plot_points_sol_intermediate
 
 cl_method = CandidateList.Method.NearestNeighbour
 ml_model = MLAdd.MLModel.SVM
-improvement = "ILS"  # 2-Opt or ILS
+improvement = "2-Opt-CL"  # 2-Opt, 2-Opt-CL or ILS
 
-# todo : Run the experiment for all the ML model available
+# todo : Run using the POPMUSIC candidate list method with solutions of POPMUSIC size 1000
 
 
 reader = ReadTSPlib()
 # reader = RandomInstancesGenerator()
-# for ml_model in [MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
-#                  MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
-#                  MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble, MLAdd.MLModel.OptimalTour]:
-for ml_model in [MLAdd.MLModel.NearestNeighbour ,MLAdd.MLModel.OptimalTour]:
+for ml_model in [MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
+                 MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
+                 MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble, MLAdd.MLModel.OptimalTour]:
+# for ml_model in [MLAdd.MLModel.NearestNeighbour ,MLAdd.MLModel.OptimalTour]:
     
     print('\n\n')
     print(f'--------------------------------------------------')
@@ -49,8 +49,9 @@ for ml_model in [MLAdd.MLModel.NearestNeighbour ,MLAdd.MLModel.OptimalTour]:
     for instance in reader.instances_generator():
         n_points, positions, distance_matrix, name, optimal_tour = instance
 
-        print(f"\n INSTANCE: {name}")
+        # print(f"\n INSTANCE: {name}")
         # if n_points < 500:
+        #     break
             # continue
         opt_tour = np.append(optimal_tour, optimal_tour[0])
         opt_len = compute_tour_lenght(opt_tour,distance_matrix)
@@ -59,7 +60,9 @@ for ml_model in [MLAdd.MLModel.NearestNeighbour ,MLAdd.MLModel.OptimalTour]:
 
         # X_g, X_intermediate, X_improved, time_mlg, time_2opt
         experiments_results = MLGreedy.run(n_points, positions, distance_matrix, 
-                                           optimal_tour, cl_method=cl_method, ml_model=ml_model, opt_len=opt_len)
+                                           optimal_tour, cl_method=cl_method, 
+                                           ml_model=ml_model, opt_len=opt_len, improvement_type=improvement)
+        
 
         # mlg_tour = create_tour_from_X(experiments_results["tour"])
         mlg_tour = experiments_results["tour Constructive"]
