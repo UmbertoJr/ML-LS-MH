@@ -9,11 +9,11 @@ from function_to_parallelize import create_results
 
 
 cl_method = CandidateList.Method.NearestNeighbour
-ml_model = MLAdd.MLModel.SVM
-improvement = "ILS"  # 2-Opt, 2-Opt-CL or ILS
+ml_model = MLAdd.MLModel.RN
+improvement = "2-Opt"  # 2-Opt, 2-Opt-CL or ILS
 style = "reduced"  # reduced, free or complete
 
-# todo : Sistemare lo skipp in caso che il file gia esiste
+# todo : fare in modo che giri usando RN
 
 if __name__ == "__main__":
     os.nice(-15)
@@ -25,10 +25,10 @@ if __name__ == "__main__":
 
 
     # reader = RandomInstancesGenerator() MLAdd.MLModel.OptimalTour
-    for ml_model in [MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
-                     MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
-                     MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble]:
-
+    # for ml_model in [MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
+                    #  MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
+                    #  MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble]:
+    for style in ["reduced", "free", "complete"]:
         print('\n\n')
         print(f'--------------------------------------------------')
         print()
@@ -44,11 +44,14 @@ if __name__ == "__main__":
         shared_dict = manager.dict()
         reader = ReadTSPlib()
         args = []
-         # for ml_model in [MLAdd.MLModel.OptimalTour]:
+        
         for instance in reader.instances_generator():
             n_points, positions, distance_matrix, name, optimal_tour = instance
             
-            args.append((name, improvement, ml_model, cl_method, n_points, positions, distance_matrix, optimal_tour, shared_dict, style))
+            args.append((name, improvement, ml_model, 
+                         cl_method, n_points, positions, 
+                         distance_matrix, optimal_tour, 
+                         shared_dict, style))
 
         print(f"Arguments to pass to the parallelized function: {len(args)}")
 
@@ -63,7 +66,7 @@ if __name__ == "__main__":
                 f"Time {improvement} {style}", 
                 f"Operations {improvement} {style}", 
                 f"Removed {improvement} {style}", 
-                # f"First phase edges",
+                f"First phase edges",
                 ]
         data = {h: [] for h in header}
         print(format_string.format(*header))

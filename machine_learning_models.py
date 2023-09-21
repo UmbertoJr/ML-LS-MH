@@ -1,5 +1,5 @@
-import numpy as np
 import pickle
+import numpy as np
 from enum import Enum
 from pickle_load import renamed_loads
 from sklearn.preprocessing import MinMaxScaler
@@ -124,11 +124,19 @@ class MLAdd:
             return False
         
         if self.model == MLAdd.MLModel.RN:
-            if distance == 1:
-                print(distance, distan)
-                return self.model1.predict(distance_vector.reshape(1, -1))
-            if distance == 2:
-                return self.model2.predict(distance_vector.reshape(1, -1))
-            return False
+            # load the pickle file with the dictionary with the RN model results
+            with open(f'./data/RN/firstPhase_{name}.pkl', 'rb') as handle:
+                RN_results = pickle.load(handle)
+            if i in RN_results[str(j)] or j in RN_results[str(i)]:
+                return True
+            else:
+                return False
+            # print(RN_results)  
+            # if distance == 1:
+            #     print(distance, distan)
+            #     return self.model1.predict(distance_vector.reshape(1, -1))
+            # if distance == 2:
+            #     return self.model2.predict(distance_vector.reshape(1, -1))
+            # return False
         
         raise ValueError(f'{self.model} not implemented yet')

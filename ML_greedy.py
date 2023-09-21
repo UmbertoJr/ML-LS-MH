@@ -32,13 +32,11 @@ class MLGreedy:
         return False
 
     @staticmethod
-    def run(n, positions, distance_matrix, optimal_tour, cl_method=CandidateList.Method.NearestNeighbour,
-<<<<<<< HEAD
-            ml_model=MLAdd.MLModel.NearestNeighbour, limit=15, opt_len=None, improvement_type="2-Opt", style="reduced"):
-=======
+    def run(n, positions, distance_matrix, optimal_tour, 
+            cl_method=CandidateList.Method.NearestNeighbour,
             ml_model=MLAdd.MLModel.NearestNeighbour, limit=15, opt_len=None, 
-            improvement_type="2-Opt", name_instance=""):
->>>>>>> 921d3ed (update from fisso)
+            improvement_type="2-Opt", style="complete", name_instance=""):
+        
         t0 = time.time()
         # create CL for each vertex
         candidate_list = CandidateList.compute(positions, distance_matrix, cl_method)
@@ -70,18 +68,19 @@ class MLGreedy:
         ML_add = MLAdd(model=ml_model)
 
 
-        # for l in L_P select the extreme vertices i, j of l
+        # for the edge in L_P select the extreme vertices i, j of the edge
         for L_P_pos, [i, j] in enumerate(L_P.T):
+            
             # if i and j have less than two connections each in X
             if np.sum(X[i] > -1) < 2 and np.sum(X[j] > -1) < 2:
 
 
                 # if l do not creates a inner-loop
                 if not MLGreedy.inner_loop(X.copy(), [i, j]):
-                    nodes = np.concatenate(([i], candidate_list[i][:limit]))
+                    
+                    # creates the local view context used by the ML model
                     nodes = np.concatenate(([i], candidate_list[i][:limit]))
                     nodes = np.pad(nodes, (0, limit + 1 - len(nodes)), constant_values=(-1))
-                    dists = np.full(int(limit * (limit + 1) / 2), fill_value=-1, dtype=np.float64)
                     dists = np.full(int(limit * (limit + 1) / 2), fill_value=-1, dtype=np.float64)
                     edges = np.empty(int(limit * (limit + 1) / 2), dtype=object)
                     edges_in_sol = np.zeros(int(limit * (limit + 1) / 2))
@@ -144,13 +143,27 @@ class MLGreedy:
 
 
         if improvement_type == "2-Opt":
-            results_to_return = MLGreedy.improve_solution(X, X_intermediate, distance_matrix, candidate_list)
+            results_to_return = MLGreedy.improve_solution(X, 
+                                                          X_intermediate,
+                                                          distance_matrix, 
+                                                          candidate_list,
+                                                          style=style,
+                                                          opt_len=opt_len)
         elif improvement_type == "2-Opt-CL":
-            results_to_return = MLGreedy.improve_solution(X, X_intermediate, distance_matrix, 
-                                                          candidate_list, with_CL=True)
+            results_to_return = MLGreedy.improve_solution(X, 
+                                                          X_intermediate, 
+                                                          distance_matrix, 
+                                                          candidate_list, 
+                                                          with_CL=True,
+                                                          style=style,
+                                                          opt_len=opt_len)
         elif improvement_type == "ILS":
-            results_to_return = MLGreedy.improve_ILS_solution(X, X_intermediate, distance_matrix, 
-                                                              candidate_list, opt_len, style=style)
+            results_to_return = MLGreedy.improve_ILS_solution(X, 
+                                                              X_intermediate, 
+                                                              distance_matrix, 
+                                                              candidate_list, 
+                                                              opt_len, 
+                                                              style=style)
 
         # ml_tour = create_tour_from_X(X)
         # results_to_return = {
@@ -195,7 +208,7 @@ class MLGreedy:
         This function takes X_intermediate and returns in a list all the edges connected during first phase
         """
         """
-        This function takes X_intermediate and returns in a list all the edges connetcted during first phase
+        This function takes X_intermediate and returns in a list all the edges connected during first phase
         """
         fixed_edges = np.empty(np.sum(X != -1), dtype=object)
         n_fixed_e = 0
@@ -209,216 +222,191 @@ class MLGreedy:
         return list(fixed_edges)
 
     @staticmethod
-    def improve_solution(X, X_intermediate, distance_matrix, CLs, with_CL = False):
-    def improve_solution(X, X_intermediate, distance_matrix, CLs, with_CL = False):
+    def improve_solution(X, X_intermediate, distance_matrix, CLs,
+                         with_CL = False, 
+                         style="complete", opt_len=0):
+        
         fixed_edges = MLGreedy.get_fixed_edges(X_intermediate)
         free_nodes = MLGreedy.get_free_nodes(X_intermediate)
         
-        #  qui si lancia il 2-opt ridotto
-        t0 = time.time()
-        X_c_reduced = np.copy(X)
-        tour_reduced = create_tour_from_X(X_c_reduced)
-        count_reduced = 0
-        ops_reduced = 0
-
-        while True:
+        if style == "complete":
             if with_CL:
-                X_c_reduced, improvement, ops_plus, tour_reduced = MLGreedy.two_opt_reduced_CL(X_c_reduced, free_nodes, fixed_edges,
-                                                                                               distance_matrix, CLs, tour_reduced)
+                improvement_function = MLGreedy.two_opt_complete_CL
             else:
-                X_c_reduced, improvement, ops_plus, tour_reduced = MLGreedy.two_opt_reduced(X_c_reduced, free_nodes, fixed_edges,
-                                                                                            distance_matrix, CLs, tour_reduced)
+                improvement_function = MLGreedy.two_opt_complete
+        elif style == "free":
+            if with_CL:
+                improvement_function = MLGreedy.two_opt_free_CL
+            else:
+                improvement_function = MLGreedy.two_opt_free
+        elif style == "reduced":
+            if with_CL:
+                improvement_function = MLGreedy.two_opt_reduced_CL
+            else:
+                improvement_function = MLGreedy.two_opt_reduced
                 
-            ops_reduced += ops_plus
-            if improvement == 0:
-                time_reduced = time.time() - t0
-                break
-            else:
-                count_reduced += 1
         
-
-        #  qui si lancia il 2-opt free
+        #  qui si lancia il 2-opt
         t0 = time.time()
-        X_c_free = np.copy(X)
-        tour_free = create_tour_from_X(X_c_free)
-        count_free = 0
-        ops_free = 0
-        repeat_free = 0
+        X_c = np.copy(X)
+        tour_ = create_tour_from_X(X_c)
+        len_tour = compute_tour_lenght(tour_, distance_matrix)
+        count_ = 0
+        ops_ = 0
+        repeat = 0
+
         while True:
-            if with_CL:
-                X_c_free, improvement, ops_plus, tour_free = MLGreedy.two_opt_free_CL(X_c_free, free_nodes, fixed_edges, 
-                                                                                      distance_matrix, CLs, tour_free)
-            else:
-                X_c_free, improvement, ops_plus, tour_free = MLGreedy.two_opt_free(X_c_free, free_nodes, fixed_edges, 
-                                                                                   distance_matrix, CLs, tour_free)
+            X_c, improvement, ops_, tour_ = improvement_function(X_c,
+                                                                 free_nodes, 
+                                                                 fixed_edges,
+                                                                 distance_matrix, 
+                                                                 CLs,
+                                                                 tour_)
             
-            tour_free = tour_free[::-1]
-            ops_free += ops_plus
-            repeat_free += 1
-            repeat_free = repeat_free % 2
-            if improvement == 0 and repeat_free == 1:
-                time_free = time.time() - t0
-                break
-            else:
-                count_free += 1
-
-        
-        #  qui si lancia il 2-opt complete
-        t0 = time.time()
-        X_c_complete = np.copy(X) 
-        tour_complete = create_tour_from_X(X_c_complete)
-        count_complete = 0
-        ops_complete = 0
-        
-        #  qui si lancia il 2-opt ridotto
-        t0 = time.time()
-        X_c_reduced = np.copy(X)
-        tour_reduced = create_tour_from_X(X_c_reduced)
-        count_reduced = 0
-        ops_reduced = 0
-
-        while True:
-            if with_CL:
-                X_c_reduced, improvement, ops_plus, tour_reduced = MLGreedy.two_opt_reduced_CL(X_c_reduced, free_nodes, fixed_edges,
-                                                                                               distance_matrix, CLs, tour_reduced)
-            else:
-                X_c_reduced, improvement, ops_plus, tour_reduced = MLGreedy.two_opt_reduced(X_c_reduced, free_nodes, fixed_edges,
-                                                                                            distance_matrix, CLs, tour_reduced)
-                
-            ops_reduced += ops_plus
+            tour_ = tour_[::-1]
+            count_ += ops_
+            len_tour -= improvement
+            # print(f'Process {mp.current_process().name} improvement = {improvement},'
+            #       f'len_tour = {len_tour}, gap = {(len_tour - opt_len) / opt_len * 100:.3f} %')
             if improvement == 0:
-                time_reduced = time.time() - t0
-                break
+                if (repeat == 1 or style=="complete"):    
+                    time_ = time.time() - t0
+                    break
+                else:
+                    repeat += 1    
+                    repeat = repeat % 2
             else:
-                count_reduced += 1
+                repeat = 0
+
+
+            # if with_CL:
+            #     X_c_reduced, improvement, 
+            #     ops_plus, tour_reduced = MLGreedy.two_opt_reduced_CL(X_c_reduced, 
+            #                                                          free_nodes, 
+            #                                                          fixed_edges,
+            #                                                          distance_matrix, 
+            #                                                          CLs, 
+            #                                                          tour_reduced)
+            # else:
+            #     X_c_reduced, improvement, 
+            #     ops_plus, tour_reduced = MLGreedy.two_opt_reduced(X_c_reduced, 
+            #                                                       free_nodes, 
+            #                                                       fixed_edges,
+            #                                                       distance_matrix, 
+            #                                                       CLs, 
+            #                                                       tour_reduced)
+                
+
+                
+                
+                
+        #     ops_reduced += ops_plus
+        #     if improvement == 0:
+        #         time_reduced = time.time() - t0
+        #         break
+        #     else:
+        #         count_reduced += 1
         
 
-        #  qui si lancia il 2-opt free
-        t0 = time.time()
-        X_c_free = np.copy(X)
-        tour_free = create_tour_from_X(X_c_free)
-        count_free = 0
-        ops_free = 0
-        repeat_free = 0
-        while True:
-            if with_CL:
-                X_c_free, improvement, ops_plus, tour_free = MLGreedy.two_opt_free_CL(X_c_free, free_nodes, fixed_edges, 
-                                                                                      distance_matrix, CLs, tour_free)
-            else:
-                X_c_free, improvement, ops_plus, tour_free = MLGreedy.two_opt_free(X_c_free, free_nodes, fixed_edges, 
-                                                                                   distance_matrix, CLs, tour_free)
+        # #  qui si lancia il 2-opt free
+        # t0 = time.time()
+        # X_c_free = np.copy(X)
+        # tour_free = create_tour_from_X(X_c_free)
+        # count_free = 0
+        # ops_free = 0
+        # repeat_free = 0
+        # while True:
+        #     if with_CL:
+        #         X_c_free, improvement, ops_plus, tour_free = MLGreedy.two_opt_free_CL(X_c_free, free_nodes, fixed_edges, 
+        #                                                                               distance_matrix, CLs, tour_free)
+        #     else:
+        #         X_c_free, improvement, ops_plus, tour_free = MLGreedy.two_opt_free(X_c_free, free_nodes, fixed_edges, 
+        #                                                                            distance_matrix, CLs, tour_free)
             
-            tour_free = tour_free[::-1]
-            ops_free += ops_plus
-            repeat_free += 1
-            repeat_free = repeat_free % 2
-            if improvement == 0 and repeat_free == 1:
-                time_free = time.time() - t0
-                break
-            else:
-                count_free += 1
+        #     tour_free = tour_free[::-1]
+        #     ops_free += ops_plus
+        #     repeat_free += 1
+        #     repeat_free = repeat_free % 2
+        #     if improvement == 0 and repeat_free == 1:
+        #         time_free = time.time() - t0
+        #         break
+        #     else:
+        #         count_free += 1
 
         
-        #  qui si lancia il 2-opt complete
-        t0 = time.time()
-        X_c_complete = np.copy(X) 
-        tour_complete = create_tour_from_X(X_c_complete)
-        count_complete = 0
-        ops_complete = 0
-        while True:
-            if with_CL:
-                X_c_complete, improvement, ops_plus, tour_complete = MLGreedy.two_opt_complete_CL(X_c_complete, free_nodes, fixed_edges, 
-                                                                                                  distance_matrix, CLs, tour_complete)
-            else:
-                X_c_complete, improvement, ops_plus, tour_complete = MLGreedy.two_opt_complete(X_c_complete, free_nodes, fixed_edges, 
-                                                                                               distance_matrix, CLs, tour_complete)
-                
-            ops_complete += ops_plus
-            if with_CL:
-                X_c_complete, improvement, ops_plus, tour_complete = MLGreedy.two_opt_complete_CL(X_c_complete, free_nodes, fixed_edges, 
-                                                                                                  distance_matrix, CLs, tour_complete)
-            else:
-                X_c_complete, improvement, ops_plus, tour_complete = MLGreedy.two_opt_complete(X_c_complete, free_nodes, fixed_edges, 
-                                                                                               distance_matrix, CLs, tour_complete)
-                
-            ops_complete += ops_plus
-            if improvement == 0:
-                time_complete = time.time() - t0
-                break
-            else:
-                count_complete += 1
+        # #  qui si lancia il 2-opt complete
+        # t0 = time.time()
+        # X_c_complete = np.copy(X) 
+        # tour_complete = create_tour_from_X(X_c_complete)
+        # count_complete = 0
+        # ops_complete = 0
+        
+        # #  qui si lancia il 2-opt ridotto
+        # t0 = time.time()
+        # X_c_reduced = np.copy(X)
+        # tour_reduced = create_tour_from_X(X_c_reduced)
+        # count_reduced = 0
+        # ops_reduced = 0
 
-        improvement_type = "2-Opt"
-        if with_CL:
-            improvement_type = "2-Opt-CL"
+        # while True:
+        #     if with_CL:
+        #         X_c_reduced, improvement, ops_plus, tour_reduced = MLGreedy.two_opt_reduced_CL(X_c_reduced, free_nodes, fixed_edges,
+        #                                                                                        distance_matrix, CLs, tour_reduced)
+        #     else:
+        #         X_c_reduced, improvement, ops_plus, tour_reduced = MLGreedy.two_opt_reduced(X_c_reduced, free_nodes, fixed_edges,
+        #                                                                                     distance_matrix, CLs, tour_reduced)
+                
+        #     ops_reduced += ops_plus
+        #     if improvement == 0:
+        #         time_reduced = time.time() - t0
+        #         break
+        #     else:
+        #         count_reduced += 1
+        
 
+        # #  qui si lancia il 2-opt free
+        # t0 = time.time()
+        # X_c_free = np.copy(X)
+        # tour_free = create_tour_from_X(X_c_free)
+        # count_free = 0
+        # ops_free = 0
+        # repeat_free = 0
+        # while True:
+        #     if with_CL:
+        #         X_c_free, improvement, ops_plus, tour_free = MLGreedy.two_opt_free_CL(X_c_free, free_nodes, fixed_edges, 
+        #                                                                               distance_matrix, CLs, tour_free)
+        #     else:
+        #         X_c_free, improvement, ops_plus, tour_free = MLGreedy.two_opt_free(X_c_free, free_nodes, fixed_edges, 
+        #                                                                            distance_matrix, CLs, tour_free)
+            
+        #     tour_free = tour_free[::-1]
+        #     ops_free += ops_plus
+        #     repeat_free += 1
+        #     repeat_free = repeat_free % 2
+        #     if improvement == 0 and repeat_free == 1:
+        #         time_free = time.time() - t0
+        #         break
+        #     else:
+        #         count_free += 1
+
+        
         data_to_return = {
             "tour Constructive": create_tour_from_X(X),
             "X Constructive": X, 
 
-            f"tour {improvement_type} reduced": tour_reduced,
-            f"X {improvement_type} reduced": X_c_reduced,
+            f"tour 2-Opt-{['', 'CL'][with_CL]} {style}": tour_,
+            f"X 2-Opt-{['', 'CL'][with_CL]} {style}": X_c,
             
-            f"tour {improvement_type} free": tour_free,
-            f"X {improvement_type} free": X_c_free,
-            
-            f"tour {improvement_type} complete": tour_complete,
-            f"X {improvement_type} complete": X_c_complete,
-            
-            f"Time {improvement_type} reduced": time_reduced,
-            f"Time {improvement_type} free": time_free,
-            f"Time {improvement_type} complete": time_complete,
-
-            f"Ops {improvement_type} reduced":ops_reduced,
-            f"Ops {improvement_type} free":ops_free,
-            f"Ops {improvement_type} complete":ops_complete,
+            f"Time 2-Opt-{['', 'CL'][with_CL]} {style}": time_,
+      
+            f"Ops 2-Opt-{['', 'CL'][with_CL]} {style}":count_,
             
             "free_nodes": free_nodes,
             "fixed edges": fixed_edges,
         }
         return data_to_return
-        
-                time_complete = time.time() - t0
-                break
-            else:
-                count_complete += 1
-
-        improvement_type = "2-Opt"
-        if with_CL:
-            improvement_type = "2-Opt-CL"
-
-        data_to_return = {
-            "tour Constructive": create_tour_from_X(X),
-            "X Constructive": X, 
-
-            f"tour {improvement_type} reduced": tour_reduced,
-            f"X {improvement_type} reduced": X_c_reduced,
-            
-            f"tour {improvement_type} free": tour_free,
-            f"X {improvement_type} free": X_c_free,
-            
-            f"tour {improvement_type} complete": tour_complete,
-            f"X {improvement_type} complete": X_c_complete,
-            
-            f"Time {improvement_type} reduced": time_reduced,
-            f"Time {improvement_type} free": time_free,
-            f"Time {improvement_type} complete": time_complete,
-
-            f"Ops {improvement_type} reduced":ops_reduced,
-            f"Ops {improvement_type} free":ops_free,
-            f"Ops {improvement_type} complete":ops_complete,
-            
-            "free_nodes": free_nodes,
-            "fixed edges": fixed_edges,
-        }
-        return data_to_return
-        
-
+                
     @staticmethod
-    def two_opt_reduced(X, free_nodes, fixed_edges, distance_matrix, CLs, tour):
-        # tour = create_tour_from_X(X)
-        # assert check_feasibility(tour), "Problem the tour is not feasible"
-        ops = 0
     def two_opt_reduced(X, free_nodes, fixed_edges, distance_matrix, CLs, tour):
         # tour = create_tour_from_X(X)
         # assert check_feasibility(tour), "Problem the tour is not feasible"
@@ -427,14 +415,12 @@ class MLGreedy:
             node_in = tour[i + 1]
             if node_ip in free_nodes and node_in in free_nodes and (node_ip, node_in) not in fixed_edges:
                 for j, node_jp in enumerate(tour[i+1:-2]):
-                for j, node_jp in enumerate(tour[i+1:-2]):
                     node_jn = tour[i + j + 2]
                     if node_jp in free_nodes and node_jn in free_nodes and (node_jp, node_jn) not in fixed_edges:
                         old_cost = distance_matrix[node_ip][node_in] + distance_matrix[node_jp][node_jn]
                         new_cost = distance_matrix[node_ip][node_jp] + distance_matrix[node_in][node_jn]
                         ops += 1
                         # print(old_cost, new_cost)
-                        ops += 1
                         # print(old_cost, new_cost)
                         if old_cost - new_cost > 0:
                             # print("\nentrato!")

@@ -7,10 +7,11 @@ from random_reader import RandomInstancesGenerator
 from utils import compute_difference_tour_length, compute_tour_lenght
 
 
-def create_results(name_instance, improvement, ml_model, cl_method, n_points, 
+def create_results(name_instance, improvement, ml_model, cl_method, n_points,
                    positions, distance_matrix, optimal_tour, shared_dict, style):
+    
+    # set priority for the process
     os.nice(-15)
-
 
     format_string = "{:^15}{:^15}{:^15}{:^20}{:^20}{:^20}{:^20}{:^20}"
     header = ["Problem", 
@@ -21,7 +22,7 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
               f"Time {improvement} {style}", 
               f"Operations {improvement} {style}", 
               f"Removed {improvement} {style}", 
-            #   f"First phase edges",
+              f"First phase edges",
             ]
    
     # check if the experiment has already been done
@@ -33,8 +34,7 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
             data = json.load(fp)
         shared_dict[name_instance] = data
         values = [data[k][0] for k in header]
-        print(values)
-        # print(format_string.format(*[data[k] for k in header]))
+        print(format_string.format(*values))
         return
    
     data = {h: [] for h in header}
@@ -45,9 +45,14 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
     opt_tour = np.append(optimal_tour, optimal_tour[0])
     opt_len = compute_tour_lenght(opt_tour,distance_matrix)
 
-    experiments_results = MLGreedy.run(n_points, positions, distance_matrix, 
-                                    optimal_tour, cl_method=cl_method, 
-                                    ml_model=ml_model, opt_len=opt_len, improvement_type=improvement, style=style)
+    experiments_results = MLGreedy.run(n_points, positions, 
+                                       distance_matrix, optimal_tour, 
+                                       cl_method=cl_method, 
+                                       ml_model=ml_model, 
+                                       opt_len=opt_len,
+                                       improvement_type=improvement, 
+                                       style=style,
+                                       name_instance=name_instance)
     
 
     # mlg_tour = create_tour_from_X(experiments_results["tour"])
@@ -72,7 +77,7 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
     # print(experiments_results[f"tour {improvement} {style}""])
     
     count_removed_fixed_edges_reduced = 0
-    # count_first_phase_edges = len(experiments_results["fixed edges"])
+    count_first_phase_edges = len(experiments_results["fixed edges"])
     for edge in experiments_results["fixed edges"]:
         a, b = edge[0], edge[1]
 
@@ -94,7 +99,7 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
         experiments_results[f"Ops {improvement} {style}"], 
         
         count_removed_fixed_edges_reduced,
-        # count_first_phase_edges,
+        count_first_phase_edges,
         ]
     
     print(format_string.format(*row))
