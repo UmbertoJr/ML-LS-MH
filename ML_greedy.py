@@ -33,7 +33,12 @@ class MLGreedy:
 
     @staticmethod
     def run(n, positions, distance_matrix, optimal_tour, cl_method=CandidateList.Method.NearestNeighbour,
+<<<<<<< HEAD
             ml_model=MLAdd.MLModel.NearestNeighbour, limit=15, opt_len=None, improvement_type="2-Opt", style="reduced"):
+=======
+            ml_model=MLAdd.MLModel.NearestNeighbour, limit=15, opt_len=None, 
+            improvement_type="2-Opt", name_instance=""):
+>>>>>>> 921d3ed (update from fisso)
         t0 = time.time()
         # create CL for each vertex
         candidate_list = CandidateList.compute(positions, distance_matrix, cl_method)
@@ -95,7 +100,9 @@ class MLGreedy:
                     ret = (j == optimal_tour[pos_i_opt - 1] or j == optimal_tour[(pos_i_opt + 1) % len(optimal_tour)])
 
                     # if the ML agrees the addition of l
-                    if ML_add(distance=L_P_distances[L_P_pos], distance_vector=dists, solution_vector=edges_in_sol, in_opt=ret):
+                    if ML_add(distance=L_P_distances[L_P_pos], distance_vector=dists, 
+                              solution_vector=edges_in_sol, in_opt=ret, 
+                              i=i, j=j, name=name_instance):
                         X[i] = np.array([j, X[i, 0]])
                         X[j] = np.array([i, X[j, 0]])
 
@@ -185,7 +192,7 @@ class MLGreedy:
     @staticmethod
     def get_fixed_edges(X):
         """
-        This function takes X_intermediate and returns in a list all the edges connetcted during first phase
+        This function takes X_intermediate and returns in a list all the edges connected during first phase
         """
         """
         This function takes X_intermediate and returns in a list all the edges connetcted during first phase

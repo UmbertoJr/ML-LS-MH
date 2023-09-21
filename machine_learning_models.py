@@ -18,7 +18,8 @@ class MLAdd:
                 6: "Linear Underbalanced",
                 8: "Optimal Tour",
                 9: "Always True",
-                10: "Always False"
+                10: "Always False",
+                11: "RN"
             }
             return strings.get(self.value, "Invalid ML Model")
 
@@ -31,7 +32,8 @@ class MLAdd:
         OptimalTour = 8
         AllTrue = 9
         AllFalse = 10
-
+        RN = 11
+        
     def __init__(self, model):
         if not isinstance(model, MLAdd.MLModel):
             raise TypeError(f'model argument should be MLModel, given {type(model)}')
@@ -73,7 +75,7 @@ class MLAdd:
             with open('ML/new_MAJ/ensemble_maj_second-4.pickle', 'rb') as handle:
                 self.model2 = renamed_loads(handle.read())
 
-    def __call__(self, distance, distance_vector, solution_vector, in_opt):
+    def __call__(self, distance, distance_vector, solution_vector, in_opt, i, j, name):
         if self.model == MLAdd.MLModel.AllTrue:
             return True
         if self.model == MLAdd.MLModel.AllFalse:
@@ -120,4 +122,13 @@ class MLAdd:
                 X = np.concatenate((distance_vector, solution_vector)).reshape(1, -1)
                 return self.model2.predict(X)
             return False
+        
+        if self.model == MLAdd.MLModel.RN:
+            if distance == 1:
+                print(distance, distan)
+                return self.model1.predict(distance_vector.reshape(1, -1))
+            if distance == 2:
+                return self.model2.predict(distance_vector.reshape(1, -1))
+            return False
+        
         raise ValueError(f'{self.model} not implemented yet')

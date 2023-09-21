@@ -3,5 +3,9 @@ venv/
 pyconcorde/
 pypomusic/
 __pycache__/
+<<<<<<< HEAD
 ./results/
 *.json
+=======
+*.pkl
+>>>>>>> 921d3ed (update from fisso)
