@@ -1,8 +1,7 @@
+import numpy as np
 from os import listdir
 from os.path import isfile, join, exists
 from hide_output import HideOutput
-from instance_solver import Solver
-import numpy as np
 
 
 class ReadTSPlib:
@@ -37,7 +36,7 @@ class ReadTSPlib:
 
         # get current instance information
         name = lines[0].split(' ')[1]
-        n_points = np.int(lines[3].split(' ')[1])
+        n_points = int(lines[3].split(' ')[1])
         distance = lines[4].split(' ')[1]
         distance_formula = self.distance_formula_dict[distance]
 
@@ -65,11 +64,6 @@ class ReadTSPlib:
     def load_optimal_solution(filename):
         return np.load(filename)
 
-    @staticmethod
-    def compute_optimal_solution(positions):
-        with HideOutput():
-            _, opt = Solver.solve(positions)
-        return opt
 
     @staticmethod
     def create_dist_matrix(nPoints, positions, distance_formula):

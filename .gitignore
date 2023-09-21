@@ -3,3 +3,5 @@ venv/
 pyconcorde/
 pypomusic/
 __pycache__/
+./results/
+*.json

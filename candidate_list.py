@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from scipy.spatial import Delaunay
-from pypopmusic.PyCandidatePOP import PyCandidatePOP
+# from pypopmusic.PyCandidatePOP import PyCandidatePOP
 import numpy as np
 
 
@@ -11,13 +11,13 @@ class CandidateList:
             strings = {
                 1: "Nearest Neighbour",
                 2: "Delaunay Triangulation",
-                3: "POP Music"
+                # 3: "POP Music"
             }
             return strings.get(self.value, "Invalid CL Method")
 
         NearestNeighbour = 1
         DelaunayTriangulation = 2
-        POPMusic = 3
+        # POPMusic = 3
 
     @staticmethod
     def NearestNeighbour(positions, distance_matrix, length):
@@ -61,14 +61,15 @@ class CandidateList:
             candidate_list[node] = neighbours[indexes]
         return candidate_list
 
-    @staticmethod
-    def POPMusic(positions, n_sampling=3):
-        instance_popmusic = PyCandidatePOP(verbose=False, number_of_solutions=n_sampling)
-        candidate_list, _ = instance_popmusic(positions)
-        return np.array([np.array(cl) for cl in candidate_list], dtype=object)
+    # @staticmethod
+    # def POPMusic(positions, n_sampling=3):
+    #     instance_popmusic = PyCandidatePOP(verbose=False, number_of_solutions=n_sampling)
+    #     candidate_list, _ = instance_popmusic(positions)
+    #     return np.array([np.array(cl) for cl in candidate_list], dtype=object)
 
     @staticmethod
-    def compute(positions, distance_matrix, method, length=15):
+    def compute(positions, distance_matrix, method, length=50):
+        
         if not isinstance(method, CandidateList.Method):
             raise TypeError(f'method argument should be CandidateListMethod, given {type(method)}')
 
@@ -76,7 +77,7 @@ class CandidateList:
             return CandidateList.NearestNeighbour(positions, distance_matrix, length)
         elif method == CandidateList.Method.DelaunayTriangulation:
             return CandidateList.DelaunayTriangulation(positions, distance_matrix, length)
-        elif method == CandidateList.Method.POPMusic:
-            return CandidateList.POPMusic(positions)
+        # elif method == CandidateList.Method.POPMusic:
+        #     return CandidateList.POPMusic(positions)
 
         raise ValueError(f'{method} not implemented yet')
