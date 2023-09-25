@@ -71,7 +71,8 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
     
     delta = compute_difference_tour_length(opt_tour, mlg_tour,
                                             distance_matrix)
-    delta_imp_reduced = compute_difference_tour_length(opt_tour, experiments_results[f"tour {improvement} {style}"], 
+    delta_imp_reduced = compute_difference_tour_length(opt_tour, 
+                                                       experiments_results[f"tour {improvement} {style}"], 
                                                     distance_matrix)
     
     # print(experiments_results[f"tour {improvement} {style}""])
@@ -108,6 +109,9 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
         data[h].append(row[i])
 
     shared_dict[name_instance] = data
+
+    if not os.path.exists(f'./results/partial_results'):
+        os.makedirs(f'./results/partial_results')
 
     # save the experiment results as a json file in the "./results/partial_results" folder
     with open(f'./results/partial_results/{name_instance}_{improvement}_{ml_model}_{style}.json', 'w') as fp:

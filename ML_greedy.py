@@ -165,13 +165,13 @@ class MLGreedy:
                                                               opt_len, 
                                                               style=style)
 
-        # ml_tour = create_tour_from_X(X)
+        ml_tour = create_tour_from_X(X)
         # results_to_return = {
         #     "tour Constructive": ml_tour,
         #     "X Constructive": X, 
 
-        #     f"tour NO simple": ml_tour,
-        #     f"X NO simple": X,
+        #     # f"tour NO simple": ml_tour,
+        #     # f"X NO simple": X,
             
         #     f"Time NO simple": 0,
         #     f"Ops NO simple": 0,
@@ -278,6 +278,22 @@ class MLGreedy:
             else:
                 repeat = 0
 
+        
+        data_to_return = {
+            "tour Constructive": create_tour_from_X(X),
+            "X Constructive": X, 
+
+            f"tour 2-Opt{['', '-CL'][with_CL]} {style}": tour_,
+            f"X 2-Opt{['', '-CL'][with_CL]} {style}": X_c,
+            
+            f"Time 2-Opt{['', '-CL'][with_CL]} {style}": time_,
+      
+            f"Ops 2-Opt{['', '-CL'][with_CL]} {style}":count_,
+            
+            "free_nodes": free_nodes,
+            "fixed edges": fixed_edges,
+        }
+        return data_to_return
 
             # if with_CL:
             #     X_c_reduced, improvement, 
@@ -389,22 +405,6 @@ class MLGreedy:
         #     else:
         #         count_free += 1
 
-        
-        data_to_return = {
-            "tour Constructive": create_tour_from_X(X),
-            "X Constructive": X, 
-
-            f"tour 2-Opt-{['', 'CL'][with_CL]} {style}": tour_,
-            f"X 2-Opt-{['', 'CL'][with_CL]} {style}": X_c,
-            
-            f"Time 2-Opt-{['', 'CL'][with_CL]} {style}": time_,
-      
-            f"Ops 2-Opt-{['', 'CL'][with_CL]} {style}":count_,
-            
-            "free_nodes": free_nodes,
-            "fixed edges": fixed_edges,
-        }
-        return data_to_return
                 
     @staticmethod
     def two_opt_reduced(X, free_nodes, fixed_edges, distance_matrix, CLs, tour):
