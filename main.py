@@ -16,10 +16,11 @@ style = "reduced"  # reduced, free or complete
 # todo : fare in modo che giri usando RN
 
 if __name__ == "__main__":
-    os.nice(-15)
+    os.nice(0)
 
     # Numbert of prcess available
-    num_processes = mp.cpu_count() - 2
+    # num_processes = mp.cpu_count() - 3
+    num_processes = 1
     print(f"Number of processes available: {num_processes}")
         
 
@@ -28,7 +29,8 @@ if __name__ == "__main__":
     # for ml_model in [MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
                     #  MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
                     #  MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble]:
-    for style in ["reduced", "free", "complete"]:
+    # for style in ["reduced", "free", "complete"]:
+    for style in ["reduced"]:
         print('\n\n')
         print(f'--------------------------------------------------')
         print()
@@ -52,12 +54,13 @@ if __name__ == "__main__":
                          cl_method, n_points, positions, 
                          distance_matrix, optimal_tour, 
                          shared_dict, style))
+            # break
 
         print(f"Arguments to pass to the parallelized function: {len(args)}")
 
 
 
-        format_string = "{:^15}{:^15}{:^15}{:^20}{:^20}{:^20}{:^20}{:^20}   "
+        format_string = "{:^15}{:^15}{:^15}{:^20}{:^20}{:^20}{:^20}{:^20}{:^20}"
         header = ["Problem", 
                 "ML-model",
                 "Gap ML-C", 
@@ -85,7 +88,7 @@ if __name__ == "__main__":
         # df.loc['Avg'] = df.mean()
         # df.loc['Tot'] = df.sum() 
         df.to_csv(f"./results/{ml_model}_{improvement}_{style}.csv", index=False)
-        print(df)
+        # print(df)
 
         # print('\n\n')
         # print(f'--------------------------------------------------')

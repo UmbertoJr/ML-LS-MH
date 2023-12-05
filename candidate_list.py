@@ -2,6 +2,7 @@ from enum import Enum, auto
 from scipy.spatial import Delaunay
 # from pypopmusic.PyCandidatePOP import PyCandidatePOP
 import numpy as np
+import os
 
 
 class CandidateList:
@@ -81,3 +82,49 @@ class CandidateList:
         #     return CandidateList.POPMusic(positions)
 
         raise ValueError(f'{method} not implemented yet')
+
+    @staticmethod
+    def read_CL_from_file(instance_name):
+        """
+        This function reads the candidate list generated from the approaches available from the LKH implementation.
+        :param file_name: the name of the file containing the candidate list is of the type *.cl
+        inside each file there is a first row that contains the number of nodes in the TSP
+        from the second line up to the end (which is given by -1 and EOF) the lines gives the following informations:
+            a node number, 
+            the number of the dad of the node in the minimum spanning tree (0, if the node has no dad),
+            the number of candidate edges emanating from the node, 
+            followed by the candidate edges. For each candidate edge its end node number and alpha-value are given.
+        
+        :return: the candidate list saved as a dictionary were the key is the node number and the value is a list of the candidate edges
+
+        """
+        candidate_list = {}
+        alpha_values_list = {}
+        file_name = f"./data/TSPlib/candidate_lists/{instance_name}.cl"
+
+        # Check if the file exists otherwise return an empty dictionary
+        if not os.path.exists(file_name):
+            return candidate_list, alpha_values_list
+            
+        with open(file_name, 'r') as file:
+            num_nodes = int(file.readline().strip())
+
+            for line in file:
+                line_data = list(map(int, line.strip().split()))
+
+                if line_data[0] == -1:
+                    break
+
+                node_number = line_data[0]
+                num_candidate_edges = line_data[2]
+
+                # Extract candidate edges information (end node number, alpha-value)
+                # candidate_edges = [(int(line_data[i])-1, line_data[i + 1]) for i in range(3, 2 * num_candidate_edges + 3, 2)]
+
+                candidate_edges = [int(line_data[i])-1 for i in range(3, 2 * num_candidate_edges + 3, 2)]
+                candidate_list[int(node_number) - 1] = candidate_edges
+        
+                alpha_values = [float(line_data[i + 1]) for i in range(3, 2 * num_candidate_edges + 3, 2)]
+                alpha_values_list[int(node_number) - 1] = alpha_values
+
+        return candidate_list, alpha_values_list
