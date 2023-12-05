@@ -3,9 +3,10 @@ venv/
 pyconcorde/
 pypomusic/
 __pycache__/
-<<<<<<< HEAD
 ./results/
 *.json
-=======
+*.cl
 *.pkl
->>>>>>> 921d3ed (update from fisso)
+*.tsp
+*.csv
+*.npy
