@@ -9,9 +9,9 @@ import multiprocessing as mp
 
 # TODO:
 # - [ ] cancellare parti di codice inutili
-# - [ ] implementare il 2-opt-reduced senza operazioni rindondanti
 # - [ ] implementare un perturbation operator efficace
-# - [ ] implementare un tabu list efficace
+
+TO_PRINT = False
 
 
 class MLGreedy:
@@ -234,6 +234,7 @@ class MLGreedy:
         len_tour = compute_tour_lenght(tour_, distance_matrix)
         fixed_edges = MLGreedy.get_fixed_edges(X_intermediate)
         free_nodes, position_free_nodes = MLGreedy.get_free_nodes(X_intermediate, tour_)
+        tabu_list = {}
         
         
         if style == "reduced":
@@ -252,13 +253,13 @@ class MLGreedy:
         ops_ = 0
 
         while True:
-            X_c, tour_, improvement, ops_ = improvement_function(X_c, tour_,
-                                                                 free_nodes, 
-                                                                 position_free_nodes,
-                                                                 fixed_edges,
-                                                                 distance_matrix, 
-                                                                 CLs,
-                                                                 tabu_list=False)
+            X_c, tour_, improvement, ops_, tabu_list, position_free_nodes = improvement_function(X_c, tour_,
+                                                                                                free_nodes, 
+                                                                                                position_free_nodes,
+                                                                                                fixed_edges,
+                                                                                                distance_matrix, 
+                                                                                                CLs,
+                                                                                                tabu_list=tabu_list)
             count_ += ops_
             len_tour -= improvement
             # print(f'Process {mp.current_process().name} improvement = {improvement},'
@@ -267,10 +268,13 @@ class MLGreedy:
             if improvement == 0:
                 time_ = time.time() - t0
                 break
-             
-        tour_ = create_tour_from_X(X_c)
-        len_tour_computed = compute_tour_lenght(tour_, distance_matrix)
-        assert len_tour == len_tour_computed, f"len_tour = {len_tour}, len_tour_computed = {len_tour_computed}"
+        
+        # tour_X = create_tour_from_X(X_c)
+        # len_tour_computed = compute_tour_lenght(tour_X, distance_matrix)
+        # len_tour_ = compute_tour_lenght(tour_, distance_matrix)
+        # assert len_tour == len_tour_computed, f"len_tour = {len_tour}, len_tour_computed = {len_tour_computed}"
+        # assert len_tour_ == len_tour_computed, f"len_tour_ = {len_tour_}, len_tour_computed = {len_tour_computed}"
+        # assert len_tour_ == len_tour, f"len_tour_ = {len_tour_}, len_tour = {len_tour}"
 
         data_to_return = {
             "tour Constructive": create_tour_from_X(X),
@@ -300,100 +304,113 @@ class MLGreedy:
                     for node_jp in free_nodes:
                         if node_jp not in [node_ip, node_in]:
                             node_jn = tour[position_free_nodes[node_jp] + andamento]
-                            if node_jn not in [node_in, node_ip, node_jp]:
+                            if node_jn not in [node_in, node_ip]:
                                 if node_jn in free_nodes and (node_jp, node_jn) not in fixed_edges:
-                                    old_cost = distance_matrix[node_ip][node_in] + distance_matrix[node_jp][node_jn]
-                                    new_cost = distance_matrix[node_ip][node_jp] + distance_matrix[node_in][node_jn]
-                                    ops += 1
-                                    if old_cost - new_cost >= 0:
-                                        # print("\nentrato!")
-                                        # print(f"node_ip = {node_ip}, node_in = {node_in}")
-                                        # print(f"andamento = {andamento}, n= {n}")
-                                        # print()
-                                        # print(f"node_jp = {node_jp}, node_jn = {node_jn}")
-                                        # print()
-                                        # print(f"distance_matrix[node_ip][node_in] = {distance_matrix[node_ip][node_in]}")
-                                        # print(f"distance_matrix[node_jp][node_jn] = {distance_matrix[node_jp][node_jn]}")
-                                        # print(f"distance_matrix[node_ip][node_jp] = {distance_matrix[node_ip][node_jp]}")
-                                        # print(f"distance_matrix[node_in][node_jn] = {distance_matrix[node_in][node_jn]}")
-                                        # print(f"old_cost = {old_cost}, new_cost = {new_cost}")
-                                        # print()
-                        
-                                        # print(node_ip, node_in, node_jp, node_jn)
-                                        # print(f"improvement = {old_cost - new_cost}")
-                                        # print()
-                                        X[node_ip][np.where(X[node_ip] == node_in)[0][0]] = node_jp
-                                        X[node_in][np.where(X[node_in] == node_ip)[0][0]] = node_jn
-                                        X[node_jp][np.where(X[node_jp] == node_jn)[0][0]] = node_ip
-                                        X[node_jn][np.where(X[node_jn] == node_jp)[0][0]] = node_in
-                                        
-                                        
-                                        position_minimal = min(position_free_nodes[node_ip], position_free_nodes[node_jp])
-                                        position_maximal = max(position_free_nodes[node_ip], position_free_nodes[node_jp])
-                                        # print(f"position_minimal = {position_minimal}, position_maximal = {position_maximal}")
-                                        # print(f"tour = {tour}")
-
-
-                                        if andamento == -1:
-
-                                            # update the position of the free nodes in the tour
-                                            for iter, node_id in enumerate(range(position_minimal, position_maximal)):
-                                                node = tour[node_id]
-                                                if node in free_nodes:
-                                                    # print(f"node = {node}")
-                                                    # print(f"previous postion node = {position_free_nodes[node]}")
-                                                    position_free_nodes[node] = position_minimal + (position_maximal - position_minimal - iter - 1)
-                                                    # print("new position of the node")
-                                                    # print(position_free_nodes[node])
-
-                                            # print(f"tour[position_minimal:position_maximal] = {tour[position_minimal:position_maximal]}")
-                                            tour[position_minimal:position_maximal] = \
-                                                np.flip(tour[position_minimal:position_maximal], axis=0)
-                                                
-                                            # print(np.argwhere(tour == node)[0][0])
-                                            # print()
+                                    if not tabu_list or check_if_tabu(node_ip, node_in, node_jp, node_jn, tabu_list):
                                             
-                                        else:
-                                            if position_maximal == n-1:
+                                        old_cost = distance_matrix[node_ip][node_in] + distance_matrix[node_jp][node_jn]
+                                        new_cost = distance_matrix[node_ip][node_jp] + distance_matrix[node_in][node_jn]
+                                        ops += 1
+                                        if old_cost - new_cost > 0:
+                                            if TO_PRINT:
+                                                print("\nentrato!")
+                                                print(f"node_ip = {node_ip}, node_in = {node_in}")
+                                                print(f"andamento = {andamento}, n= {n}")
+                                                print()
+                                                print(f"node_jp = {node_jp}, node_jn = {node_jn}")
+                                                print()
+                                                print(f"distance_matrix[node_ip][node_in] = {distance_matrix[node_ip][node_in]}")
+                                                print(f"distance_matrix[node_jp][node_jn] = {distance_matrix[node_jp][node_jn]}")
+                                                print(f"distance_matrix[node_ip][node_jp] = {distance_matrix[node_ip][node_jp]}")
+                                                print(f"distance_matrix[node_in][node_jn] = {distance_matrix[node_in][node_jn]}")
+                                                print(f"old_cost = {old_cost}, new_cost = {new_cost}")
+                                                print()
+                                
+                                                print(node_ip, node_in, node_jp, node_jn)
+                                                print(f"improvement = {old_cost - new_cost}")
+                                                print()
+
+                                            X[node_ip][np.where(X[node_ip] == node_in)[0][0]] = node_jp
+                                            X[node_in][np.where(X[node_in] == node_ip)[0][0]] = node_jn
+                                            X[node_jp][np.where(X[node_jp] == node_jn)[0][0]] = node_ip
+                                            X[node_jn][np.where(X[node_jn] == node_jp)[0][0]] = node_in
+                                            
+                                            
+                                            position_minimal = min(position_free_nodes[node_ip], position_free_nodes[node_jp])
+                                            position_maximal = max(position_free_nodes[node_ip], position_free_nodes[node_jp])
+
+                                            if TO_PRINT:
+                                                print(f"position_minimal = {position_minimal}, position_maximal = {position_maximal}")
+                                                print(f"tour = {tour}")
+
+
+                                            if andamento == -1:
 
                                                 # update the position of the free nodes in the tour
-                                                for iter, node_id in enumerate(range(position_minimal, n)):
+                                                for iter, node_id in enumerate(range(position_minimal, position_maximal)):
                                                     node = tour[node_id]
                                                     if node in free_nodes:
                                                         # print(f"node = {node}")
                                                         # print(f"previous postion node = {position_free_nodes[node]}")
-                                                        position_free_nodes[node] = position_minimal + (n - position_minimal - iter)
+                                                        position_free_nodes[node] = position_minimal + (position_maximal - position_minimal - iter - 1)
                                                         # print("new position of the node")
                                                         # print(position_free_nodes[node])
-        
-                                                # print(f"tour[position_minimal:] = {tour[position_minimal:]}")
-                                                tour[position_minimal:] = \
-                                                    np.flip(tour[position_minimal+andamento:], axis=0)
 
+                                                # print(f"tour[position_minimal:position_maximal] = {tour[position_minimal:position_maximal]}")
+                                                tour[position_minimal:position_maximal] = \
+                                                    np.flip(tour[position_minimal:position_maximal], axis=0)
+                                                    
                                                 # print(np.argwhere(tour == node)[0][0])
                                                 # print()
+                                                
+                                            else:
+                                                if position_maximal == n-1:
 
-                                            else:    
-                                                # update the position of the free nodes in the tour
-                                                for iter, node_id in enumerate(range(position_minimal+1, position_maximal+1)):
-                                                    node = tour[node_id]
-                                                    if node in free_nodes:
-                                                        # print(f"node = {node}")
-                                                        # print(f"previous postion node = {position_free_nodes[node]}")
-                                                        position_free_nodes[node] = position_minimal + (position_maximal - position_minimal - iter)
-                                                        # print("new position of the node")
-                                                        # print(position_free_nodes[node])
-
-                                        
-                                                # print(f"tour[position_minimal+andamento:position_maximal+andament] = {tour[position_minimal+andamento:position_maximal+andamento]}")
-                                                tour[position_minimal+andamento:position_maximal+andamento] = \
-                                                    np.flip(tour[position_minimal+andamento:position_maximal+andamento], axis=0)
-                                                                                    
-                                        
-                                        return X, tour, old_cost - new_cost, ops
-                
+                                                    # update the position of the free nodes in the tour
+                                                    for iter, node_id in enumerate(range(position_minimal, n)):
+                                                        node = tour[node_id]
+                                                        if node in free_nodes:
+                                                            # print(f"node = {node}")
+                                                            # print(f"previous postion node = {position_free_nodes[node]}")
+                                                            position_free_nodes[node] = position_minimal + (position_maximal - position_minimal - iter)
+                                                            # print("new position of the node")
+                                                            # print(position_free_nodes[node])
             
-        return X, tour, 0, ops
+                                                    # print(f"tour[position_minimal:] = {tour[position_minimal:]}")
+                                                    tour[position_minimal+andamento:] = \
+                                                        np.flip(tour[position_minimal+andamento:], axis=0)
+
+                                                    # print(np.argwhere(tour == node)[0][0])
+                                                    # print()
+
+                                                else:    
+                                                    # update the position of the free nodes in the tour
+                                                    for iter, node_id in enumerate(range(position_minimal+1, position_maximal+1)):
+                                                        node = tour[node_id]
+                                                        if node in free_nodes:
+                                                            # print(f"node = {node}")
+                                                            # print(f"previous postion node = {position_free_nodes[node]}")
+                                                            position_free_nodes[node] = position_minimal + (position_maximal - position_minimal - iter)
+                                                            # print("new position of the node")
+                                                            # print(position_free_nodes[node])
+
+                                            
+                                                    # print(f"tour[position_minimal+andamento:position_maximal+andament] = {tour[position_minimal+andamento:position_maximal+andamento]}")
+                                                    tour[position_minimal+andamento:position_maximal+andamento] = \
+                                                        np.flip(tour[position_minimal+andamento:position_maximal+andamento], axis=0)
+
+                                            # check if tabu list is a active (if it is active, it is a dictionary)
+                                            if type(tabu_list) == dict:
+                                                # insert the edge in the tabu list
+                                                insert_tabu(node_ip, node_in, node_jp, node_jn, tabu_list)
+                                            
+
+                                            return X, tour, old_cost - new_cost, ops, tabu_list, position_free_nodes
+                                        
+                                    else:
+                                        evaporate_tabu(tabu_list)
+            
+        return X, tour, 0, ops, tabu_list, position_free_nodes
     
 
     @staticmethod
@@ -404,7 +421,6 @@ class MLGreedy:
             for andamento in [1 - n, -1]:
                 node_in = tour[position_free_nodes[node_ip] + andamento]
                 if node_in in free_nodes and (node_ip, node_in) not in fixed_edges:
-                    
                     possible_nodes_jp = CLs[node_ip] + CLs[node_in]
                     for node_jp in possible_nodes_jp:
                         if node_jp not in [node_ip, node_in]:
@@ -412,136 +428,235 @@ class MLGreedy:
                                 node_jn = tour[position_free_nodes[node_jp] + andamento]
                                 if node_jn not in [node_in, node_ip, node_jp]:
                                     if node_jn in free_nodes and (node_jp, node_jn) not in fixed_edges:
-                                        old_cost = distance_matrix[node_ip][node_in] + distance_matrix[node_jp][node_jn]
-                                        new_cost = distance_matrix[node_ip][node_jp] + distance_matrix[node_in][node_jn]
-                                        ops += 1
-                                        if old_cost - new_cost >= 0:
-                                            print("\nentrato!")
-                                            print(f"node_ip = {node_ip}, node_in = {node_in}")
-                                            print(f"andamento = {andamento}, n= {n}")
-                                            print()
-                                            print(f"node_jp = {node_jp}, node_jn = {node_jn}")
-                                            print()
-                                            print(f"distance_matrix[node_ip][node_in] = {distance_matrix[node_ip][node_in]}")
-                                            print(f"distance_matrix[node_jp][node_jn] = {distance_matrix[node_jp][node_jn]}")
-                                            print(f"distance_matrix[node_ip][node_jp] = {distance_matrix[node_ip][node_jp]}")
-                                            print(f"distance_matrix[node_in][node_jn] = {distance_matrix[node_in][node_jn]}")
-                                            print(f"old_cost = {old_cost}, new_cost = {new_cost}")
-                                            print()
-                            
-                                            print(node_ip, node_in, node_jp, node_jn)
-                                            print(f"improvement = {old_cost - new_cost}")
-                                            print()
-                                            X[node_ip][np.where(X[node_ip] == node_in)[0][0]] = node_jp
-                                            X[node_in][np.where(X[node_in] == node_ip)[0][0]] = node_jn
-                                            X[node_jp][np.where(X[node_jp] == node_jn)[0][0]] = node_ip
-                                            X[node_jn][np.where(X[node_jn] == node_jp)[0][0]] = node_in
-                                            
-                                            
-                                            position_minimal = min(position_free_nodes[node_ip], position_free_nodes[node_jp])
-                                            position_maximal = max(position_free_nodes[node_ip], position_free_nodes[node_jp])
-
-                                            print(f"position_minimal = {position_minimal}, position_maximal = {position_maximal}")
-                                            print(f"tour = {tour}")
-
-                                            if andamento == -1:
-
-                                                # update the position of the free nodes in the tour
-                                                for iter, node_id in enumerate(range(position_minimal, position_maximal)):
-                                                    node = tour[node_id]
-                                                    if node in free_nodes:
-                                                        print(f"node = {node}")
-                                                        print(f"previous postion node = {position_free_nodes[node]}")
-                                                        position_free_nodes[node] = position_minimal + (position_maximal - position_minimal - iter - 1)
-                                                        print("new position of the node")
-                                                        print(position_free_nodes[node])
-
-                                                print(f"tour[position_minimal:position_maximal] = {tour[position_minimal:position_maximal]}")
-                                                tour[position_minimal:position_maximal] = \
-                                                    np.flip(tour[position_minimal:position_maximal], axis=0)
-                                                    
-                                                print(np.argwhere(tour == node)[0][0])
-                                                print()
-                                                
-                                            else:
-                                                if position_maximal == n-1:
-
-                                                    # update the position of the free nodes in the tour
-                                                    for iter, node_id in enumerate(range(position_minimal, n)):
-                                                        node = tour[node_id]
-                                                        if node in free_nodes:
-                                                            print(f"node = {node}")
-                                                            print(f"previous postion node = {position_free_nodes[node]}")
-                                                            position_free_nodes[node] = position_minimal + (n - position_minimal - iter)
-                                                            print("new position of the node")
-                                                            print(position_free_nodes[node])
-            
-                                                    print(f"tour[position_minimal:] = {tour[position_minimal:]}")
-                                                    tour[position_minimal:] = \
-                                                        np.flip(tour[position_minimal+andamento:], axis=0)
-
-                                                    print(np.argwhere(tour == node)[0][0])
+                                        if not tabu_list or check_if_tabu(node_ip, node_in, node_jp, node_jn, tabu_list):
+                                            old_cost = distance_matrix[node_ip][node_in] + distance_matrix[node_jp][node_jn]
+                                            new_cost = distance_matrix[node_ip][node_jp] + distance_matrix[node_in][node_jn]
+                                            ops += 1
+                                            if old_cost - new_cost > 0:
+                                                if TO_PRINT:        
+                                                    print("\nLocal Search!")
+                                                    print(f"node_ip = {node_ip}, node_in = {node_in}")
+                                                    print(f"andamento = {andamento}, n= {n}")
+                                                    print()
+                                                    print(f"node_jp = {node_jp}, node_jn = {node_jn}")
+                                                    print()
+                                                    print(f"distance_matrix[node_ip][node_in] = {distance_matrix[node_ip][node_in]}")
+                                                    print(f"distance_matrix[node_jp][node_jn] = {distance_matrix[node_jp][node_jn]}")
+                                                    print(f"distance_matrix[node_ip][node_jp] = {distance_matrix[node_ip][node_jp]}")
+                                                    print(f"distance_matrix[node_in][node_jn] = {distance_matrix[node_in][node_jn]}")
+                                                    print(f"old_cost = {old_cost}, new_cost = {new_cost}")
+                                                    print()
+                                    
+                                                    print(node_ip, node_in, node_jp, node_jn)
+                                                    print(f"improvement = {old_cost - new_cost}")
                                                     print()
 
-                                                else:    
-                                                    # update the position of the free nodes in the tour
-                                                    for iter, node_id in enumerate(range(position_minimal+1, position_maximal+1)):
-                                                        node = tour[node_id]
-                                                        if node in free_nodes:
+                                                    print(f"X[{node_ip}] = {X[node_ip]}, X[{node_in}] = {X[node_in]}")
+                                                    print(f"X[{node_jp}] = {X[node_jp]}, X[{node_jn}] = {X[node_jn]}")
+                                                    print(f"==========================")
+
+                                                X[node_ip][np.where(X[node_ip] == node_in)[0][0]] = node_jp
+                                                X[node_in][np.where(X[node_in] == node_ip)[0][0]] = node_jn
+                                                X[node_jp][np.where(X[node_jp] == node_jn)[0][0]] = node_ip
+                                                X[node_jn][np.where(X[node_jn] == node_jp)[0][0]] = node_in
+                                                
+                                                if TO_PRINT:
+                                                    print(f"X[{node_ip}] = {X[node_ip]}, X[{node_in}] = {X[node_in]}")
+                                                    print(f"X[{node_jp}] = {X[node_jp]}, X[{node_jn}] = {X[node_jn]}")
+                                                    print()
+
+                                                    print()
+                                                    print(f"position_free_nodes[node_ip] = {position_free_nodes[node_ip]}")
+                                                    print(f"position_free_nodes[node_in] = {position_free_nodes[node_in]}") 
+                                                    print(f"position_free_nodes[node_jp] = {position_free_nodes[node_jp]}")
+                                                    print(f"position_free_nodes[node_jn] = {position_free_nodes[node_jn]}")
+
+
+                                                    positions = [position_free_nodes[node_ip], position_free_nodes[node_in], 
+                                                                 position_free_nodes[node_jp], position_free_nodes[node_jn]]
+                                                    
+                                                    print(f"positions = {positions}")
+                                                    print(f"np.abs(position_free_nodes[node_in] - position_free_nodes[node_jp]) = {np.abs(position_free_nodes[node_in] - position_free_nodes[node_jp])}")
+                                                    print(f"position_free_nodes[node_ip] - position_free_nodes[node_jn] = {np.abs(position_free_nodes[node_ip] - position_free_nodes[node_jn])}")
+                                                
+
+                                                to_flip = np.argmin([np.abs(position_free_nodes[node_in] - position_free_nodes[node_jp]), 
+                                                np.abs(position_free_nodes[node_ip] - position_free_nodes[node_jn])])
+
+                                                p_min = [position_free_nodes[node_in], position_free_nodes[node_ip]][to_flip]
+                                                p_max = [position_free_nodes[node_jp], position_free_nodes[node_jn]][to_flip]
+
+                                                position_minimal = min(p_min, p_max)
+                                                position_maximal = max(p_min, p_max)
+
+                                                if TO_PRINT:    
+                                                    print(f"to_flip = {to_flip}")
+                                                    print(f"position_minimal = {position_minimal}, position_maximal = {position_maximal}")
+                                                    print(f"tour = {tour}")
+
+                                                # update the position of the free nodes in the tour
+                                                for iter, node_id in enumerate(range(position_minimal, position_maximal + 1)):
+                                                    node = tour[node_id]
+                                                    if node in free_nodes:
+                                                        if TO_PRINT:
                                                             print(f"node = {node}")
                                                             print(f"previous postion node = {position_free_nodes[node]}")
-                                                            position_free_nodes[node] = position_minimal + (position_maximal - position_minimal - iter)
+                                                        position_free_nodes[node] = position_minimal + (position_maximal - position_minimal - iter)
+                                                        if TO_PRINT:
                                                             print("new position of the node")
                                                             print(position_free_nodes[node])
+                                                
 
+                                                if TO_PRINT:
+                                                    print(f"tour[position_minimal:position_maximal] = {tour[position_minimal:position_maximal + 1]}")
+                                                tour[position_minimal:position_maximal + 1] = \
+                                                    np.flip(tour[position_minimal:position_maximal + 1], axis=0)
+                                                
+                                                if TO_PRINT:  
+                                                    print(f"tour[position_minimal:position_maximal] = {tour[position_minimal:position_maximal + 1]}")
+                                                    print(np.argwhere(tour == node)[0][0])
+
+                                                # check if tabu list is a active (if it is active, it is a dictionary)
+                                                if type(tabu_list) == dict:
+                                                    # insert the edge in the tabu list
+                                                    insert_tabu(node_ip, node_in, node_jp, node_jn, tabu_list)
+                                                
+
+                                                return X, tour, old_cost - new_cost, ops, tabu_list, position_free_nodes
                                             
-                                                    print(f"tour[position_minimal+andamento:position_maximal+andament] = {tour[position_minimal+andamento:position_maximal+andamento]}")
-                                                    tour[position_minimal+andamento:position_maximal+andamento] = \
-                                                        np.flip(tour[position_minimal+andamento:position_maximal+andamento], axis=0)
-                                                                                        
-                                            
+                                        else:
+                                            evaporate_tabu(tabu_list)                                                
             
-        return X, tour, 0, ops
+        return X, tour, 0, ops, tabu_list, position_free_nodes
     
 
     @staticmethod
-    def two_cl(i, X_i, tour, free_nodes, fixed_edges, distance_matrix, CLs):
+    def two_cl(i, X, tour, free_nodes, position_free_nodes, fixed_edges, distance_matrix, CLs):
         n = len(tour)
-        X = np.copy(X_i)
-        tour = create_tour_from_X(X)
-        node_ip = tour[i]
-        node_in = tour[i + 1 - n]
+        node_in = tour[i]
+        node_ip = tour[i -1]
         ops = 0
         if node_ip in free_nodes and node_in in free_nodes and (node_ip, node_in) not in fixed_edges:    
-            for node_jp in np.random.permutation(CLs[node_ip]):    
-                j = np.argwhere(tour[:-1] == node_jp)[0][0]
-                node_jn = tour[j + 1]
-                if node_jp in free_nodes and node_jn in free_nodes and (node_jp, node_jn) not in fixed_edges:
-                    ops += 1
-                    old_cost = distance_matrix[node_ip][node_in] + distance_matrix[node_jp][node_jn]
-                    new_cost = distance_matrix[node_ip][node_jp] + distance_matrix[node_in][node_jn]
-                    # print(f"Process {mp.current_process().name}")
-                    # print(f"node_ip {node_ip}, node_in {node_in}")
-                    # print(f"node_jp {node_jp}, node_jn {node_jn}")
-                    # print(X[node_ip], X[node_in], X[node_jp], X[node_jn])
-                    # print(tour)
-                    X[node_ip][np.where(X[node_ip] == node_in)[0][0]] = node_jp
-                    X[node_in][np.where(X[node_in] == node_ip)[0][0]] = node_jn
-                    X[node_jp][np.where(X[node_jp] == node_jn)[0][0]] = node_ip
-                    X[node_jn][np.where(X[node_jn] == node_jp)[0][0]] = node_in
-                    tour[i+1:j+1]  = np.flip(tour[i+1:j+1], axis=0)
-                    return X, old_cost - new_cost, ops, create_tour_from_X(X)
+            closest_nodes = CLs[node_ip] + CLs[node_in]
+            for node_jn in np.random.permutation(closest_nodes):    
+                if node_jn not in [node_ip, node_in] and node_jn in free_nodes and node_jn not in [node_ip, node_in, 
+                                                                                                   tour[position_free_nodes[node_ip] -1], 
+                                                                                                   tour[position_free_nodes[node_in] - n + 1]]:
+                    j = position_free_nodes[node_jn]
+                    node_jp = tour[j - 1]
+                    if node_jp in free_nodes and (node_jp, node_jn) not in fixed_edges and node_jp not in [node_ip, node_in,
+                                                                                                           tour[position_free_nodes[node_ip] -1], 
+                                                                                                           tour[position_free_nodes[node_in] - n + 1]]:
+                        ops += 1
+                        old_cost = distance_matrix[node_ip][node_in] + distance_matrix[node_jp][node_jn]
+                        new_cost = distance_matrix[node_ip][node_jp] + distance_matrix[node_in][node_jn]
+                        
+                        if TO_PRINT:
+                            print("\nPerturbate!")
+                            print(f"node_ip = {node_ip}, node_in = {node_in}")
+                            print()
+                            print(f"node_jp = {node_jp}, node_jn = {node_jn}")
+                            print()
+                            print(f"distance_matrix[node_ip][node_in] = {distance_matrix[node_ip][node_in]}")
+                            print(f"distance_matrix[node_jp][node_jn] = {distance_matrix[node_jp][node_jn]}")
+                            print(f"distance_matrix[node_ip][node_jp] = {distance_matrix[node_ip][node_jp]}")
+                            print(f"distance_matrix[node_in][node_jn] = {distance_matrix[node_in][node_jn]}")
+                            print(f"old_cost = {old_cost}, new_cost = {new_cost}")
+                            print()
+            
+                            print(node_ip, node_in, node_jp, node_jn)
+                            # print(f"improvement = {old_cost - new_cost}")
+                            # print()
+
+                            print(f"X[{node_ip}] = {X[node_ip]}, X[{node_in}] = {X[node_in]}")
+                            print(f"X[{node_jp}] = {X[node_jp]}, X[{node_jn}] = {X[node_jn]}")
+                            print(f"==========================")
+
+                        X[node_ip][np.where(X[node_ip] == node_in)[0][0]] = node_jp
+                        X[node_in][np.where(X[node_in] == node_ip)[0][0]] = node_jn
+                        X[node_jp][np.where(X[node_jp] == node_jn)[0][0]] = node_ip
+                        X[node_jn][np.where(X[node_jn] == node_jp)[0][0]] = node_in
+                        
+                        if TO_PRINT:
+                            print(f"X[{node_ip}] = {X[node_ip]}, X[{node_in}] = {X[node_in]}")
+                            print(f"X[{node_jp}] = {X[node_jp]}, X[{node_jn}] = {X[node_jn]}")
+                        
+
+                            print()
+                            print(f"position_free_nodes[node_ip] = {position_free_nodes[node_ip]}")
+                            print(f"position_free_nodes[node_in] = {position_free_nodes[node_in]}") 
+                            print(f"position_free_nodes[node_jp] = {position_free_nodes[node_jp]}")
+                            print(f"position_free_nodes[node_jn] = {position_free_nodes[node_jn]}")
+
+
+                            positions = [position_free_nodes[node_ip], position_free_nodes[node_in], 
+                                        position_free_nodes[node_jp], position_free_nodes[node_jn]]
+                            print(f"positions = {positions}")
+
+                            print(f"np.abs(position_free_nodes[node_in] - position_free_nodes[node_jp]) = {np.abs(position_free_nodes[node_in] - position_free_nodes[node_jp])}")
+                            print(f"position_free_nodes[node_ip] - position_free_nodes[node_jn] = {np.abs(position_free_nodes[node_ip] - position_free_nodes[node_jn])}")
+                        to_flip = np.argmin([np.abs(position_free_nodes[node_in] - position_free_nodes[node_jp]), 
+                                             np.abs(position_free_nodes[node_ip] - position_free_nodes[node_jn])])
+                        
+
+                        p_min = [position_free_nodes[node_in], position_free_nodes[node_ip]][to_flip]
+                        p_max = [position_free_nodes[node_jp], position_free_nodes[node_jn]][to_flip]
+
+
+                        position_minimal = min(p_min, p_max)
+                        position_maximal = max(p_min, p_max)
+
+                        if TO_PRINT:
+                            print(f"p_min = {p_min}, p_max = {p_max}")
+                            print(f"to_flip = {to_flip}")
+
+                            print()
+                            print(f"position_minimal = {position_minimal}, position_maximal = {position_maximal}")
+                            print(f"tour[position_minimal:position_maximal] = {tour[position_minimal:position_maximal + 1 - n]}")
+                            print(f"tour = {tour}")
+
+                        # update the position of the free nodes in the tour
+                        for iter, node_id in enumerate(range(position_minimal, position_maximal + 1)):
+                            node = tour[node_id]
+                            if node in free_nodes:
+                                if TO_PRINT:
+                                    print(f"node = {node}")
+                                    print(f"previous postion node = {position_free_nodes[node]}")
+
+                                position_free_nodes[node] = position_minimal + (position_maximal - position_minimal - iter)
+
+                                if TO_PRINT:
+                                    print("new position of the node")
+                                    print(position_free_nodes[node])
+                                
+
+                        if TO_PRINT:
+                            print(f"tour[position_minimal:position_maximal] = {tour[position_minimal:position_maximal + 1 - n]}")
+
+                        tour[position_minimal:position_maximal + 1] = \
+                            np.flip(tour[position_minimal:position_maximal + 1], axis=0)
+                        
+                        if TO_PRINT:
+                            print(f"tour[position_minimal:position_maximal] = {tour[position_minimal:position_maximal + 1 - n]}")
+                            print(np.argwhere(tour == node)[0][0])
+
+                        return X, old_cost - new_cost, ops, tour, position_free_nodes
         
-        return X, 0, ops, tour
+        return X, 0, ops, tour, position_free_nodes
         
 
     @staticmethod
-    def double_bridge(X_i, free_nodes, fixed_edges, distance_matrix, CLs, tour, len_tour):
+    def perturbation(X_i, tour, len_tour, free_nodes, position_free_nodes, fixed_edges, distance_matrix, CLs, tabu_list):
+        # TODO: implementare un perturbation operator efficace
+        # TODO: implementare un roll del tour
+        # TODO: usare i valori di alpha per decidere quali vertici perturbare
+        
         # n = len(tour) -1
         X= np.copy(X_i)
+        tour_proposal = np.copy(tour)
+        len_proposal = np.copy(len_tour)
 
-        tour = create_tour_from_X(X)
-        free_edges_current_tour, indeces = find_free_edges(free_nodes, tour, fixed_edges)
+        free_edges_current_tour, indeces = find_free_edges(free_nodes, tour_proposal, fixed_edges)
         # print("free edges are:")
         # print(free_edges_current_tour)
         
@@ -551,137 +666,81 @@ class MLGreedy:
         # randomly choose from the free edges four edges to operate the double bridge
         selected_edges = np.random.choice(free_edges_current_tour, number_of_exhanges, replace=False)
         selected_indices = [indeces[h] for h in selected_edges]
-        # a, b, c, d = np.sort(selected_indices)
-        # a_, b_, c_, d_ = selected_edges[np.argsort(selected_indices)]
+        
         ops_ = 0
-        new_cost = len_tour
         round_ = 0
+        # print(compute_tour_lenght(tour, distance_matrix))
         for i in np.sort(selected_indices):
             round_ += 1
-            # print(f'\n round {round_}')
-            X, gain, ops, tour = MLGreedy.two_cl(i, X,  tour, free_nodes, fixed_edges, distance_matrix, CLs)
-            # print(gain, ops)
-            new_cost -= gain
+            
+            X, gain, ops, tour_proposal,\
+                 position_free_nodes = MLGreedy.two_cl(i, X,  tour_proposal, 
+                                                       free_nodes, position_free_nodes, 
+                                                       fixed_edges, distance_matrix, CLs)
+            
+            len_proposal -= gain
+            # print(f"round = {round_}, gain = {gain}, len_proposal = {len_proposal}")
             ops_ += ops
-
-        return X, create_tour_from_X(X), new_cost, ops_
-        # solution = tour[:-1]
-        # # Defining the segments of the solution ABCD
-        # B = solution[a+1:b+1]
-        # C = solution[b+1:c+1]
-        # D = solution[c+1:d+1]
-        # A = np.concatenate((solution[d+1-n:], solution[:a+1]))
-
-        # Calculating the difference in cost between the current solution and the new solution
-        # print(a_, b_, c_, d_)
-        # print(a, b, c, d)
-        # print(tour[a+1], tour[b+1], tour[c+1], tour[d-n])
-
-        # old_cost = distance_matrix[a_, tour[a +1]] + distance_matrix[b_, tour[b+1]] + \
-        #            distance_matrix[c_, tour[c+1]] + distance_matrix[d_, tour[d-n]]
         
-        # new_cost_edges = distance_matrix[a_, tour[c+1]] + distance_matrix[b_, tour[d-n]] +\
-        #                  distance_matrix[c_, tour[a+1]] + distance_matrix[d_, tour[b+1]]
         
-        # gain = new_cost_edges - old_cost
-        # # print(new_cost_edges, old_cost)
-        # # print(f"Gain double bridge = {gain}")
-
-        # # Adding the actual cost and the gain to get the new cost
-        # new_cost = len_tour + gain
-
-        # # # Defining the segments of the new solution ADCB
-        # # new_solution = np.concatenate((A, D, C, B, [A[0]]))
-
-        # # Adjust X matrix to the new tour
-        # # print(X[a_], X[tour[a+1]], X[b_], X[tour[b+1]], X[c_], X[tour[c+1]], X[d_], X[tour[d-n]])
-
-        # X[a_][np.where(X[a_] == tour[a+1])[0][0]] = tour[c+1]
-        # X[toucalendar[c+1]][np.where(X[tour[c+1]] == c_)[0][0]] = a_
-        
-        # X[b_][np.where(X[b_] == tour[b+1])[0][0]] = tour[d-n]
-        # X[tour[d-n]][np.where(X[tour[d-n]] == d_)[0][0]] = b_
-        
-        # X[c_][np.where(X[c_] == tour[c+1])[0][0]] = tour[a+1]
-        # X[tour[a+1]][np.where(X[tour[a+1]] == a_)[0][0]] = c_
-        
-        # X[d_][np.where(X[d_] == tour[d-n])[0][0]] = tour[b+1]
-        # X[tour[b+1]][np.where(X[tour[b+1]] == b_)[0][0]] = d_ 
-
-
-        # print(X[a_], X[tour[a+1]], X[b_], X[tour[b+1]], X[c_], X[tour[c+1]], X[d_], X[tour[d-n]])
-
-        # operate the double bridge on tour and X
-
+        assert len_proposal == compute_tour_lenght(tour_proposal, distance_matrix), \
+                            f"Problem with the proposal tour {len_proposal} != {compute_tour_lenght(tour_proposal, distance_matrix)}"
+        return X, tour_proposal, len_proposal, position_free_nodes, ops_
 
 
     @staticmethod
-    def run_ILS(X, distance_matrix, free_nodes, fixed_edges, CLs, type_2opt="reduced", opt_len=None):
+    def local_search_call(improvement_function, X_c, tour_, len_tour, free_nodes, position_free_nodes, fixed_edges, distance_matrix, CLs, tabu_list= False): 
+
+        count_ = 0
+        ops_ = 0
+
+        while True:
+            X_c, tour_, improvement, ops_,\
+                  tabu_list, position_free_nodes = improvement_function(X_c, tour_,
+                                                                        free_nodes, 
+                                                                        position_free_nodes,
+                                                                        fixed_edges,
+                                                                        distance_matrix, 
+                                                                        CLs,
+                                                                        tabu_list=tabu_list)
+            count_ += ops_
+            len_tour -= improvement
+            # print(f'Process {mp.current_process().name} improvement = {improvement},'
+            #       f'len_tour = {len_tour}, gap = {(len_tour - opt_len) / opt_len * 100:.3f} %')
+            
+            if improvement == 0:
+                break
+        
+        assert len_tour == compute_tour_lenght(tour_, distance_matrix), \
+                            f"Problem with the proposal tour {len_tour} != {compute_tour_lenght(tour_, distance_matrix)}"
+        return X_c, tour_, len_tour, count_, tabu_list, position_free_nodes
+
+    @staticmethod
+    def run_ILS(X, X_intermediate, distance_matrix, CLs, opt_len=None, alpha_list={}):
+        
         t0 = time.time()
-        if type_2opt=="reduced":
-            two_opt_fun = MLGreedy.two_opt_reduced_CL
-        elif type_2opt=="free":
-            two_opt_fun = MLGreedy.two_opt_free_CL
-        else:
-            two_opt_fun = MLGreedy.two_opt_complete_CL
 
+        # select the improvement function
+        two_opt_fun = MLGreedy.two_opt_reduced_CL
+        
         # restrain the number of iterations to a bilion
-        total_iterations_available = 100000000
-
-        # copy the X variable to avoid changes on the initial value
-        X_c = np.copy(X)
-        tour_initial = create_tour_from_X(X_c) # it created the tour from the X matrix and computed its objective function
-        initial_len = compute_tour_lenght(tour_initial, distance_matrix)
-        tour_lens_list = [initial_len]
-        current_len = initial_len
-        current_tour = tour_initial
+        n = len(X)
         ops_used = 0
+        total_iterations_available = n*n*10
 
-        # # initialize hashtable to keep track of the solutions already visited
-        # seen_tours = {}
-        # seen_tours = MLGreedy.save_tours_hashtable(current_tour, current_len, seen_tours)
+        # copy the initial solution and create tour
+        X_c = np.copy(X)
+        tour_initial = create_tour_from_X(X_c)
+        initial_len = compute_tour_lenght(tour_initial, distance_matrix)
+
+        # finde the fixed edges and the free nodes
+        fixed_edges = MLGreedy.get_fixed_edges(X_intermediate)
+        free_nodes, position_free_nodes = MLGreedy.get_free_nodes(X_intermediate, tour_initial)
 
         # initialize the tabu list to keep track of the actions recently performed
         tabu_list = {}
 
-        # Here it starts the first local search to improve the initial solution
-        add_impro = 0
-        repeat_optimization_r = 0
-        while True:
-                
-            X_c, improvement, ops_plus, current_tour, tabu_list = two_opt_fun(X_c, free_nodes,
-                                                                              fixed_edges, distance_matrix, 
-                                                                              CLs, current_tour, tabu_list=tabu_list)
-            ops_used += ops_plus 
-            current_tour = current_tour[::-1]               
-            current_len -= improvement
-            add_impro += improvement
-            repeat_optimization_r += 1
-            repeat_optimization_r = repeat_optimization_r % 2
-            if improvement==0 and repeat_optimization_r==0:
-                break
-            
-            # if repeat_optimization_r==0:
-            #     # standard_tour = standardize_tour(current_tour)
-            #     if seen_tours.get(standard_tour, 0) == 0:
-            #         seen_tours = MLGreedy.save_tours_hashtable(current_tour, current_len, seen_tours)
-            #         # print(f"Process {mp.current_process().name},    dimension of the hashtable {len(seen_tours)}")
-            #         # print(f"Process {mp.current_process().name},    seen tours {seen_tours}")
-            #     else:
-            #         seen_tours[standard_tour] += 1
-            #         break
-            
-            if ops_used>total_iterations_available:
-                break
-
-        # print(f"Process {mp.current_process().name}, Initial tour len {current_len}")
-
-        
-        # update the variable used during the ILS 
-        best_tour_so_far = current_tour
-        best_len_so_far = current_len
-        X_c_best = X_c
-        tour_lens_list.append(best_len_so_far)
+        # set useful variable to take trac of the ILS iterations
         temperature = initial_len * 10
         counter_temperature = 0
         repeat_temperature = 50
@@ -689,154 +748,149 @@ class MLGreedy:
         count_iterations = 0
         avg_probs = 1
         continue_next_while = False
+        
+        tour_lens_list = [initial_len]
+        current_len = initial_len
+        current_tour = tour_initial
+
+        best_tour_so_far = current_tour
+        best_len_so_far = current_len
+        X_c_best = X_c
+        tour_lens_list.append(best_len_so_far)
+        
+        # Local Search Call on the initial solution
+        X_c, current_tour, current_len, ops_used,\
+              tabu_list, position_free_nodes = MLGreedy.local_search_call(two_opt_fun, X_c, 
+                                                                          tour_initial, initial_len,
+                                                                          free_nodes, position_free_nodes,
+                                                                          fixed_edges, distance_matrix,
+                                                                          CLs, tabu_list=tabu_list)
+        
+        # Here it updates the best solution found so far
+        if current_len < best_len_so_far:
+            best_tour_so_far = current_tour
+            best_len_so_far = current_len
+            assert best_len_so_far == compute_tour_lenght(best_tour_so_far, distance_matrix), \
+                            f"Problem with the best tour {best_len_so_far} != {compute_tour_lenght(best_tour_so_far, distance_matrix)}"
+
+            if TO_PRINT:
+                print(f"Process {mp.current_process().name}")
+                print(f"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ NEW BEST = {best_len_so_far}   "\
+                    f"iteration {count_iterations}  gap = {(best_len_so_far - opt_len)/opt_len * 100}   "
+                    f"temperature {temperature}    average prob {avg_probs}   ops used {ops_used}")
+                # print(f"Initial solution improvement initial_len - best_so_far = {initial_len - best_len_so_far}")
+                print()            
+        
 
         # Here it starts the ILS
-        while avg_probs>0.01:
-            # Double Bridge
-            X_proposal, tour_proposal, len_proposal,  ops_plus = MLGreedy.double_bridge(X_c, free_nodes, fixed_edges,
-                                                                                        distance_matrix, CLs, 
-                                                                                        current_tour, current_len)
+        while avg_probs>0.7:
+            free_nodes, position_free_nodes = MLGreedy.get_free_nodes(X_intermediate, current_tour)
+
+            # Perturbate the current solution with Double Bridge
+            X_proposal, tour_proposal, len_proposal, position_free_nodes,\
+                    ops_plus = MLGreedy.perturbation(X_c,
+                                                     current_tour, 
+                                                     current_len,
+                                                     free_nodes, 
+                                                     position_free_nodes,
+                                                     fixed_edges,
+                                                     distance_matrix, 
+                                                     CLs, 
+                                                     tabu_list=tabu_list)
             
             ops_used += ops_plus
 
-            # checks if the perturbation is new
-            # standard_tour_prop = standardize_tour(tour_proposal)
-            # if seen_tours.get(standard_tour_prop, 0) == 0:
-            #     seen_tours = MLGreedy.save_tours_hashtable(tour_proposal, len_proposal, seen_tours)
-            # else:
-            #     # print(f"Process {mp.current_process().name}, perturbation already in hash table!")
-            #     # print(standard_tour)
-            #     seen_tours[standard_tour] += 1
-            #     continue
-
-            # Here it starts the second local search to improve the solution after the double bridge
-            add_impro = 0
-            # first_time_seen = False
-            repeat_optimization_r = 0
-            while True:
-                    
-                X_proposal, improvement, ops_plus, tour_proposal, tabu_list = two_opt_fun(X_proposal, free_nodes, 
-                                                                                            fixed_edges,
-                                                                                            distance_matrix, CLs, 
-                                                                                            tour_proposal, tabu_list=tabu_list)
-                ops_used += ops_plus
-                len_proposal -= improvement
-                add_impro += improvement
-                tour_proposal = tour_proposal[::-1]
-
-                repeat_optimization_r += 1
-                repeat_optimization_r = repeat_optimization_r % 2
-
-                # standard_tour_prop = standardize_tour(tour_proposal)
-                # if seen_tours.get(standard_tour_prop, 0) == 0:
-                #     seen_tours = MLGreedy.save_tours_hashtable(tour_proposal, len_proposal, seen_tours)
-                #     # print(f"Process {mp.current_process().name},  dimension of the hashtable {len(seen_tours)}")
-                #     first_time_seen = True
-                # else:
-                #     seen_tours[standard_tour] += 1
-                #     if repeat_optimization_r==0 and not first_time_seen:
-                #         continue_next_while = True
-                #         break
-                
-                if improvement == 0 and repeat_optimization_r==0:
-                    break
-
-            if ops_used>total_iterations_available:
-                break
             
-            # print(f"Process avg probs = {avg_probs}, temperature = {temperature}")
-            # first_time_seen = False
-            if continue_next_while and avg_probs>0.9:
-                continue_next_while = False
-                # print(f"Process {mp.current_process().name}   tour already seen continue!")
-                continue
-            continue_next_while = False
 
-            # Here it checks if the new solution is accepted or not
-            # if np.exp(-(len_proposal-current_len)/temperature) > np.random.uniform():
+            # COMMENT: If the perturbation does not give improvements often Let's see how can we improve it
+            
+            # Local Search Call on the perturbated solution using the Tabu List
+            X_proposal, tour_proposal, len_proposal, ops_plus,\
+                    tabu_list, position_free_nodes = MLGreedy.local_search_call(two_opt_fun, X_proposal , 
+                                                                                tour_proposal, len_proposal,
+                                                                                free_nodes, position_free_nodes,
+                                                                                fixed_edges, distance_matrix,
+                                                                                CLs, tabu_list=tabu_list)
+
+            
+            # It checks if the new proposal solution is accepted or not
             if np.exp(np.clip(-(len_proposal-current_len)/temperature, -np.inf, np.inf)) > np.random.uniform():
                 X_c = X_proposal
                 current_tour = tour_proposal
                 current_len = len_proposal
                 tour_lens_list.append(current_len)
-                # print(f"Process {mp.current_process().name},    current len accepted {current_len},"
-                #       f" dimension of the hashtable {len(seen_tours)}, avg probs = {avg_probs}")
-                    
 
-            # Here it updates the temperature used for the ILS
+                # Then, it check if the new solution is better than the best solution found so far
+                if current_len < best_len_so_far:
+                    X_c_best = X_proposal
+                    best_tour_so_far = current_tour
+                    best_len_so_far = current_len
+                    assert best_len_so_far == compute_tour_lenght(best_tour_so_far, distance_matrix), \
+                                    f"Problem with the best tour {best_len_so_far} != {compute_tour_lenght(best_tour_so_far, distance_matrix)}"
+                    if TO_PRINT:
+                        print(f"Process {mp.current_process().name}")
+                        print(f"\r$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ NEW BEST = {best_len_so_far}   "\
+                            f"iteration {count_iterations}  gap = {(best_len_so_far - opt_len)/opt_len * 100}   "
+                            f"temperature {temperature}    average prob {avg_probs}   ops used {ops_used}")
+                        print()
+
+                    # Here it checks if the solution is optimal in case it breaks the ILS
+                    if opt_len is not None:
+                        if (current_len - opt_len )/opt_len*100< 0.1:
+                            break
+            
+            
+            # ops_used += ops_plus
+            # if ops_used>total_iterations_available:
+            #     break
+            
+            # It updates the temperature used for the ILS
             count_iterations += 1
             counter_temperature +=1
-            # probabilities.append(np.exp(-(len_proposal-best_len_so_far)/temperature))
             probabilities.append(np.exp(np.clip(-(len_proposal-best_len_so_far)/temperature, -np.inf, np.inf)))
 
             if counter_temperature>repeat_temperature:
                 counter_temperature = 0
                 avg_probs = np.mean(probabilities)
-                
-                # if the len of the seen tours is too big it removes form the hashtable the tours that have been seen less than 3 times
-                # if len(seen_tours)>1000000:
-                #     for k, v in seen_tours.items():
-                #         if v<3:
-                #             del seen_tours[k]
-                    # print(f"Process {mp.current_process().name},  dimension of the hashtable {len(seen_tours)}")
-                
+                if TO_PRINT:
+                    print(f"avg_probs = {avg_probs}")
                 
                 if avg_probs<0.7:
+                    break
                     # repeat_temperature = 20
-                    if avg_probs < 0.3:
-                        # repeat_temperature = 30
-                        if avg_probs < 0.1:
-                            pass
-                            # repeat_temperature = 40
-                        else:
-                            temperature *= 0.5
-                    else:
-                        temperature *= 0.75
+                    # if avg_probs < 0.3:
+                    #     # repeat_temperature = 30
+                    #     if avg_probs < 0.1:
+                    #         pass
+                    #         # repeat_temperature = 40
+                    #     else:
+                    #         temperature *= 0.5
+                    # else:
+                    #     temperature *= 0.75
                 else:
                     temperature *= 0.9
 
                 probabilities = []
             
-
-            # Here it updates the best solution found so far
-            if current_len < best_len_so_far:
-                best_tour_so_far = current_tour
-                best_len_so_far = current_len
-                assert best_len_so_far == compute_tour_lenght(best_tour_so_far, distance_matrix), \
-                                f"Problem with the best tour {best_len_so_far} != {compute_tour_lenght(best_tour_so_far, distance_matrix)}"
-                print(f"Process {mp.current_process().name}")
-                print(f"\r$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ NEW BEST = {best_len_so_far}   "\
-                      f"iteration {count_iterations}  gap = {(best_len_so_far - opt_len)/opt_len * 100}   "
-                      f"temperature {temperature}    average prob {avg_probs}   ops used {ops_used}")
-                # print(f"Process {mp.current_process().name},  dimension of the hashtable {len(seen_tours)}")
-                    
-                X_c_best = X_proposal
                 
-                # Here it checks if the solution is optimal in case it breaks the ILS
-                if opt_len is not None:
-                    if (current_len - opt_len )/opt_len*100< 0.0001:
-                        # print(f"Process {__file__} breaking!")
-                        break
                 
         time_ils = time.time() - t0
-        print(f"\r###########FINAL RESULT ########## BEST LEN = {best_len_so_far}    last_iteration {count_iterations} "
-              f" final gap =  {(best_len_so_far - opt_len)/opt_len * 100}   temperature {temperature}    average prob {avg_probs}  "
-              f"ops used {ops_used}")
-        return best_tour_so_far, X_c_best, tour_lens_list, time_ils, ops_used
+        if TO_PRINT:
+            print(f"\r###########FINAL RESULT ########## BEST LEN = {best_len_so_far}    last_iteration {count_iterations} "
+                f" final gap =  {(best_len_so_far - opt_len)/opt_len * 100}   temperature {temperature}    average prob {avg_probs}  "
+                f"ops used {ops_used}")
+        return best_tour_so_far, X_c_best, tour_lens_list, time_ils, free_nodes, fixed_edges, ops_used
 
 
     @staticmethod
-    def improve_ILS_solution(X, X_intermediate, distance_matrix, CLs, opt_len, style="reduced"):
-        fixed_edges = MLGreedy.get_fixed_edges(X_intermediate)
-        free_nodes = MLGreedy.get_free_nodes(X_intermediate)
-
+    def improve_ILS_solution(X, X_intermediate, distance_matrix, CLs, opt_len, style="reduced", alpha_list={}):
 
         # print(f"\n\nRunning approach REDUCED")
         # Run of the ILS using the reduced 2-opt
-        best_tour_reduced, X_c_reduced, tour_lens_reduced, time_reduced, ops_reduced = MLGreedy.run_ILS(X, distance_matrix,
-                                                                                                        free_nodes, fixed_edges,
-                                                                                                        CLs, type_2opt=style,
-                                                                                                        opt_len=opt_len)
+        best_tour_reduced, X_c_reduced,\
+              tour_lens_reduced, time_reduced, free_nodes, fixed_edges,\
+                ops_reduced = MLGreedy.run_ILS(X, X_intermediate, distance_matrix,
+                                               CLs, opt_len=opt_len, alpha_list=alpha_list)
 
 
         data_to_return = {
@@ -846,33 +900,65 @@ class MLGreedy:
             f"tour ILS {style}": best_tour_reduced,
             f"X ILS {style}": X_c_reduced,
             f"list ILS {style} solutions": tour_lens_reduced,
-
-            # "tour ILS free": best_tour_free,
-            # "X ILS free": X_c_free,
-            # "list ILS free solutions": tour_lens_free,
-            # "tour ILS free": best_tour_reduced,
-            # "X ILS free": X_c_reduced,
-            # "list ILS free solutions": tour_lens_reduced,
-            
-            # "tour ILS complete": best_tour_complete,
-            # "X ILS complete": X_c_complete,
-            # "list ILS complete solutions": tour_lens_complete,
-
             
             f"Time ILS {style}": time_reduced,
-            # "Time ILS free": time_free,
-            # "Time ILS free": time_reduced,
-            # "Time ILS complete": time_complete,
-
+            
             f"Ops ILS {style}":ops_reduced,
-            # "Ops ILS free":ops_free,
-            # "Ops ILS free":ops_reduced,
-            # "Ops ILS complete":ops_complete,
-
+            
             "free_nodes": free_nodes,
             "fixed edges": fixed_edges,
         }
         return data_to_return
+
+
+def check_if_tabu(i, j, k, l, tabu):
+    first = min(i, j)
+    second = max(i, j)
+
+    third = min(k, l)
+    fourth = max(k, l)
+
+    # check if the first or the third edge is smaller
+    if first < third:
+        if ((first, second), (third, fourth)) in tabu:
+            return True
+        else:
+            return False
+        
+    elif first > third:
+        if ((third, fourth), (first, second)) in tabu:
+            return True
+        else:
+            return False
+        
+def insert_tabu(i, j, k, l, tabu):
+    first = min(i, j)
+    second = max(i, j)
+
+    third = min(k, l)
+    fourth = max(k, l)
+
+    # check if the first or the third edge is smaller
+    if first < third:
+        tabu[((first, second), (third, fourth))] = 10
+        
+    elif first > third:
+        tabu[((third, fourth), (first, second))] = 10
+
+    return tabu
+
+def evaporate_tabu(tabu):
+    if len(tabu) == 0:
+        return tabu
+    keys_to_delete = []
+    for key in tabu:
+        tabu[key] -= 1
+        if tabu[key] == 0:
+            keys_to_delete.append(key)
+    for key in keys_to_delete:
+        del tabu[key]
+    return tabu
+
 
 
 def check_feasibility(tour):

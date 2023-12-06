@@ -12,7 +12,7 @@ def create_upper_matrix(values, size):
 
 def create_distance_matrix(pos):
     distance = create_upper_matrix(scipy.spatial.distance.pdist(pos, "euclidean"), pos.shape[0])
-    distance = np.round((distance.T + distance) * 10000, 0) / 10000
+    distance = np.round((distance.T + distance), 0)
     return distance
 
 
@@ -22,11 +22,13 @@ def create_tour_from_X(X):
         [a, b] = X[tour[-1]]
         x = a if a != tour[-2] else b
         tour = np.append(tour, x)
+    
+    tour = tour[:-1]
     return tour
 
 
 def compute_tour_lenght(tour, distance_matrix):
-    return np.sum(np.array([distance_matrix[a, b] for a, b in zip(tour, tour[1:])]))
+    return np.sum(np.array([distance_matrix[a, b] for a, b in zip(tour, tour[1:])])) + distance_matrix[tour[-1], tour[0]]
 
 
 def compute_difference_tour_length(tour_opt, tour_mlg, distance_matrix):

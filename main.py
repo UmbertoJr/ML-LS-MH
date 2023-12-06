@@ -1,4 +1,5 @@
 import os
+import shutil
 import numpy as np
 import pandas as pd
 from tsplib_reader import ReadTSPlib
@@ -10,27 +11,37 @@ from function_to_parallelize import create_results
 
 cl_method = CandidateList.Method.NearestNeighbour
 ml_model = MLAdd.MLModel.RN
-improvement = "2-Opt"  # 2-Opt, 2-Opt-CL or ILS
+improvement = "ILS"  # 2-Opt, 2-Opt-CL or ILS
 style = "reduced"  # reduced, free or complete
 
-# todo : fare in modo che giri usando RN
 
 if __name__ == "__main__":
     os.nice(0)
 
     # Numbert of prcess available
-    # num_processes = mp.cpu_count() - 3
-    num_processes = 1
+    num_processes = mp.cpu_count() - 3
+    # num_processes = 1
     print(f"Number of processes available: {num_processes}")
         
+    # delete all the files in the partial results folder
+    for filename in os.listdir(f'./results/partial_results'):
+        file_path = os.path.join(f'./results/partial_results', filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (file_path, e))
 
-
+    
     # reader = RandomInstancesGenerator() MLAdd.MLModel.OptimalTour
-    # for ml_model in [MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
-                    #  MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
-                    #  MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble]:
+    for ml_model in [MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
+                     MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
+                     MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble,
+                     MLAdd.MLModel.OptimalTour, MLAdd.MLModel.RN]:
     # for style in ["reduced", "free", "complete"]:
-    for style in ["reduced"]:
+    # for style in ["reduced"]:
         print('\n\n')
         print(f'--------------------------------------------------')
         print()
@@ -50,13 +61,19 @@ if __name__ == "__main__":
         for instance in reader.instances_generator():
             n_points, positions, distance_matrix, name, optimal_tour = instance
             
+            # check if dimension is less than 700 otherwise skip
+            if n_points > 500:
+                continue
+
             args.append((name, improvement, ml_model, 
                          cl_method, n_points, positions, 
                          distance_matrix, optimal_tour, 
                          shared_dict, style))
+            
+
             # break
 
-        print(f"Arguments to pass to the parallelized function: {len(args)}")
+        print(f"Arguments to pass to the parallelized function: {len(args)}\n\n")
 
 
 

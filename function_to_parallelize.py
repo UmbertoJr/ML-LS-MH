@@ -2,7 +2,7 @@ import os
 import json
 import numpy as np
 from ML_greedy_v2 import MLGreedy
-# from drawer import plot_points_sol_intermediate
+from drawer import plot_points_sol_intermediate
 from random_reader import RandomInstancesGenerator
 from utils import compute_difference_tour_length, compute_tour_lenght
 
@@ -13,7 +13,7 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
     # set priority for the process
     os.nice(0)
 
-    format_string = "{:^15}{:^15}{:^15}{:^20}{:^20}{:^20}{:^20}{:^20}"
+    format_string = "{:^15}{:^15}{:^15}{:^20}{:^20}{:^20}{:^20}{:^20}{:^20}"
     header = ["Problem", 
               "ML-model",
               "Gap ML-C", 
@@ -29,13 +29,13 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
     # read file f'./results/partial_results/{name_instance}_{improvement}_{ml_model}.json'
     # if the file exists, return the data in the file and skip the experiment
     # otherwise, run the experiment and save the results in the file
-    # if os.path.exists(f'./results/partial_results/{name_instance}_{improvement}_{ml_model}_{style}.json'):
-    #     with open(f'./results/partial_results/{name_instance}_{improvement}_{ml_model}_{style}.json') as fp:
-    #         data = json.load(fp)
-    #     shared_dict[name_instance] = data
-    #     values = [data[k][0] for k in header]
-    #     print(format_string.format(*values))
-    #     return
+    if os.path.exists(f'./results/partial_results/{name_instance}_{improvement}_{ml_model}_{style}.json'):
+        with open(f'./results/partial_results/{name_instance}_{improvement}_{ml_model}_{style}.json') as fp:
+            data = json.load(fp)
+        shared_dict[name_instance] = data
+        values = [data[k][0] for k in header]
+        print(format_string.format(*values))
+        return
    
     data = {h: [] for h in header}
     # filtered_head = header[:]
@@ -60,14 +60,14 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
 
     # print(mlg_tour)
     # print(f"optimal len to achieve = {opt_len}")
-    # print(experiments_results[f"tour {improvement} {style}""])
-    # print(compute_difference_tour_length(opt_tour, experiments_results[f"tour {improvement} {style}""], distance_matrix)*100)
+    # print(experiments_results[f"tour {improvement} {style}"])
+    # print(compute_difference_tour_length(opt_tour, experiments_results[f"tour {improvement} {style}"], distance_matrix)*100)
 
     # plot_points_sol_intermediate(positions, experiments_results["X Constructive"], 
     #                              experiments_results["X Intermediate"], mlg_tour)
-    # plot_points_sol_intermediate(positions, experiments_results[f"X {improvement} {style}""], 
+    # plot_points_sol_intermediate(positions, experiments_results[f"X {improvement} {style}"], 
     #                              experiments_results["X Intermediate"],
-    #                              experiments_results[f"tour {improvement} {style}""])
+    #                              experiments_results[f"tour {improvement} {style}"])
     
     delta = compute_difference_tour_length(opt_tour, mlg_tour,
                                             distance_matrix)
@@ -78,7 +78,7 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
     # print(experiments_results[f"tour {improvement} {style}""])
     
     count_removed_fixed_edges_reduced = 0
-    count_first_phase_edges = len(experiments_results["fixed edges"])
+    count_first_phase_edges = int(len(experiments_results["fixed edges"])/2)
     for edge in experiments_results["fixed edges"]:
         a, b = edge[0], edge[1]
 
