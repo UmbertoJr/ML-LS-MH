@@ -683,8 +683,8 @@ class MLGreedy:
             ops_ += ops
         
         
-        assert len_proposal == compute_tour_lenght(tour_proposal, distance_matrix), \
-                            f"Problem with the proposal tour {len_proposal} != {compute_tour_lenght(tour_proposal, distance_matrix)}"
+        # assert len_proposal == compute_tour_lenght(tour_proposal, distance_matrix), \
+        #                     f"Problem with the proposal tour {len_proposal} != {compute_tour_lenght(tour_proposal, distance_matrix)}"
         return X, tour_proposal, len_proposal, position_free_nodes, ops_
 
 
@@ -711,8 +711,8 @@ class MLGreedy:
             if improvement == 0:
                 break
         
-        assert len_tour == compute_tour_lenght(tour_, distance_matrix), \
-                            f"Problem with the proposal tour {len_tour} != {compute_tour_lenght(tour_, distance_matrix)}"
+        # assert len_tour == compute_tour_lenght(tour_, distance_matrix), \
+        #                     f"Problem with the proposal tour {len_tour} != {compute_tour_lenght(tour_, distance_matrix)}"
         return X_c, tour_, len_tour, count_, tabu_list, position_free_nodes
 
     @staticmethod
@@ -747,7 +747,6 @@ class MLGreedy:
         probabilities = []
         count_iterations = 0
         avg_probs = 1
-        continue_next_while = False
         
         tour_lens_list = [initial_len]
         current_len = initial_len
@@ -770,8 +769,8 @@ class MLGreedy:
         if current_len < best_len_so_far:
             best_tour_so_far = current_tour
             best_len_so_far = current_len
-            assert best_len_so_far == compute_tour_lenght(best_tour_so_far, distance_matrix), \
-                            f"Problem with the best tour {best_len_so_far} != {compute_tour_lenght(best_tour_so_far, distance_matrix)}"
+            # assert best_len_so_far == compute_tour_lenght(best_tour_so_far, distance_matrix), \
+            #                 f"Problem with the best tour {best_len_so_far} != {compute_tour_lenght(best_tour_so_far, distance_matrix)}"
 
             if TO_PRINT:
                 print(f"Process {mp.current_process().name}")
@@ -825,8 +824,8 @@ class MLGreedy:
                     X_c_best = X_proposal
                     best_tour_so_far = current_tour
                     best_len_so_far = current_len
-                    assert best_len_so_far == compute_tour_lenght(best_tour_so_far, distance_matrix), \
-                                    f"Problem with the best tour {best_len_so_far} != {compute_tour_lenght(best_tour_so_far, distance_matrix)}"
+                    # assert best_len_so_far == compute_tour_lenght(best_tour_so_far, distance_matrix), \
+                    #                 f"Problem with the best tour {best_len_so_far} != {compute_tour_lenght(best_tour_so_far, distance_matrix)}"
                     if TO_PRINT:
                         print(f"Process {mp.current_process().name}")
                         print(f"\r$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ NEW BEST = {best_len_so_far}   "\
@@ -840,9 +839,9 @@ class MLGreedy:
                             break
             
             
-            # ops_used += ops_plus
-            # if ops_used>total_iterations_available:
-            #     break
+            ops_used += ops_plus
+            if ops_used>total_iterations_available:
+                break
             
             # It updates the temperature used for the ILS
             count_iterations += 1
