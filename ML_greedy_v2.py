@@ -675,7 +675,7 @@ class MLGreedy:
         if type(alpha_list)==dict:
             alpha_dict = {}
             for node in free_nodes:
-                if sum(alpha_list[node]) > 0:
+                if alpha_list.get(node, False) and sum(alpha_list[node]) > 0:
                     alpha_dict[node] = np.round(sum(alpha_list[node]),2)
                 else:
                     alpha_dict[node] = 0.
