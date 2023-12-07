@@ -680,7 +680,7 @@ class MLGreedy:
                 else:
                     alpha_dict[node] = 0.
         else:
-            alpha_values = {node: 1 for node in free_nodes}
+            alpha_dict = {node: 1 for node in free_nodes}
 
 
         # finally normalize the alpha values
