@@ -678,7 +678,7 @@ class MLGreedy:
                 if alpha_list.get(node, False) and sum(alpha_list[node]) > 0:
                     alpha_dict[node] = np.round(sum(alpha_list[node]),2)
                 else:
-                    alpha_dict[node] = 0.
+                    alpha_dict[node] = 0.01
         else:
             alpha_dict = {node: 1 for node in free_nodes}
 
