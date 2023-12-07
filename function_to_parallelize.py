@@ -1,6 +1,7 @@
 import os
 import json
 import numpy as np
+import multiprocessing as mp
 from ML_greedy_v2 import MLGreedy
 from drawer import plot_points_sol_intermediate
 from random_reader import RandomInstancesGenerator
@@ -41,6 +42,7 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
     # filtered_head = header[:]
     # print(format_string.format(*filtered_head))
 
+    # print(f"Process {mp.current_process().name} is running {name_instance} with {improvement} {style} and {ml_model}...")
 
     opt_tour = np.append(optimal_tour, optimal_tour[0])
     opt_len = compute_tour_lenght(opt_tour,distance_matrix)

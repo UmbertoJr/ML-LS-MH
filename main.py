@@ -19,7 +19,7 @@ if __name__ == "__main__":
     os.nice(0)
 
     # Numbert of prcess available
-    num_processes = mp.cpu_count() - 3
+    num_processes = mp.cpu_count() - 1
     # num_processes = 1
     print(f"Number of processes available: {num_processes}")
         
@@ -63,7 +63,7 @@ if __name__ == "__main__":
             n_points, positions, distance_matrix, name, optimal_tour = instance
             
             # check if dimension is less than 700 otherwise skip
-            if n_points > 500:
+            if n_points > 300:
                 continue
 
             args.append((name, improvement, ml_model, 

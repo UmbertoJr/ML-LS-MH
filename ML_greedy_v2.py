@@ -1,3 +1,4 @@
+import math
 import time
 import numpy as np
 from utils import create_tour_from_X
@@ -646,25 +647,73 @@ class MLGreedy:
         
 
     @staticmethod
-    def perturbation(X_i, tour, len_tour, free_nodes, position_free_nodes, fixed_edges, distance_matrix, CLs, tabu_list):
+    def perturbation(X_i, tour, len_tour, free_nodes, position_free_nodes, 
+                     fixed_edges, distance_matrix, 
+                     CLs, tabu_list, alpha_list):
         # TODO: implementare un perturbation operator efficace
-        # TODO: implementare un roll del tour
         # TODO: usare i valori di alpha per decidere quali vertici perturbare
         
-        # n = len(tour) -1
+        # Initialize useful variables
+        n = len(tour)
         X= np.copy(X_i)
         tour_proposal = np.copy(tour)
         len_proposal = np.copy(len_tour)
 
+        # roll the tour of a random number of positions then update the position of the free nodes
+        roll = np.random.randint(1, n)
+        tour_proposal = np.roll(tour_proposal, roll)
+        for node in free_nodes:
+            position_free_nodes[node] = (position_free_nodes[node] + roll) % n
+
+        # find the free edges in the current tour only these edges will be perturbated
         free_edges_current_tour, indeces = find_free_edges(free_nodes, tour_proposal, fixed_edges)
         # print("free edges are:")
         # print(free_edges_current_tour)
-        
-        max_value = max([8, len(free_edges_current_tour)//4])
+
+        # compute the probability of chosing a free edge according to the alpha values
+        # first check if alpha_list is a dictionary
+        if type(alpha_list)==dict:
+            alpha_dict = {}
+            for node in free_nodes:
+                if alpha_list.get(node, False) and sum(alpha_list[node]) > 0:
+                    alpha_dict[node] = np.round(sum(alpha_list[node]),2)
+                else:
+                    alpha_dict[node] = 0.01
+        else:
+            alpha_dict = {node: 1 for node in free_nodes}
+
+
+        # finally normalize the alpha values
+        alpha_values = [np.round(alpha_dict[node]/sum(alpha_dict.values()),2) for node in free_nodes]
+        alpha_values = [value/sum(alpha_values) for value in alpha_values]
+        for node, value in zip(free_nodes, alpha_values):
+            alpha_dict[node] = value
+
+        # Check if the sum of alpha_values is close to 1
+        if not math.isclose(sum(alpha_values), 1, rel_tol=1e-9):
+            print("Warning: sum of alpha_values is not close to 1")
+
+        # finally normalize the alpha values
+        alpha_probs = [alpha_dict[node] for node in free_edges_current_tour]
+        alpha_probs = [value/sum(alpha_probs) for value in alpha_probs]            
+
+        # randomly choose the number of edges to perturbate        
+        max_value = max([8, len(free_edges_current_tour)//10])
         number_of_exhanges = np.random.randint(4, max_value)
 
-        # randomly choose from the free edges four edges to operate the double bridge
-        selected_edges = np.random.choice(free_edges_current_tour, number_of_exhanges, replace=False)
+        # randomly choose from the free edges four edges to operate the double bridge 
+        # following the probability distribution suggested by the alpha values with no replacement
+        free_edges_current_tour = np.array(free_edges_current_tour)
+        
+        selected_edges = free_edges_current_tour[np.random.choice(len(free_edges_current_tour),
+                                                                  number_of_exhanges, 
+                                                                  p=alpha_probs)]
+
+        # selected_edges = free_edges_current_tour[np.random.choice(len(free_edges_current_tour), 
+        #                                                                     number_of_exhanges, 
+        #                                                                     p=[alpha_values[node] for node in free_edges_current_tour])]
+        
+        # selected_edges = np.random.choice(free_edges_current_tour, number_of_exhanges, replace=False)
         selected_indices = [indeces[h] for h in selected_edges]
         
         ops_ = 0
@@ -741,7 +790,7 @@ class MLGreedy:
         tabu_list = {}
 
         # set useful variable to take trac of the ILS iterations
-        temperature = initial_len * 10
+        temperature = initial_len * 100
         counter_temperature = 0
         repeat_temperature = 50
         probabilities = []
@@ -777,8 +826,7 @@ class MLGreedy:
                 print(f"$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ NEW BEST = {best_len_so_far}   "\
                     f"iteration {count_iterations}  gap = {(best_len_so_far - opt_len)/opt_len * 100}   "
                     f"temperature {temperature}    average prob {avg_probs}   ops used {ops_used}")
-                # print(f"Initial solution improvement initial_len - best_so_far = {initial_len - best_len_so_far}")
-                print()            
+                print()                
         
 
         # Here it starts the ILS
@@ -795,7 +843,8 @@ class MLGreedy:
                                                      fixed_edges,
                                                      distance_matrix, 
                                                      CLs, 
-                                                     tabu_list=tabu_list)
+                                                     tabu_list=tabu_list,
+                                                     alpha_list=alpha_list)
             
             ops_used += ops_plus
 
@@ -854,20 +903,8 @@ class MLGreedy:
                 if TO_PRINT:
                     print(f"avg_probs = {avg_probs}")
                 
-                if avg_probs<0.7:
-                    break
-                    # repeat_temperature = 20
-                    # if avg_probs < 0.3:
-                    #     # repeat_temperature = 30
-                    #     if avg_probs < 0.1:
-                    #         pass
-                    #         # repeat_temperature = 40
-                    #     else:
-                    #         temperature *= 0.5
-                    # else:
-                    #     temperature *= 0.75
                 else:
-                    temperature *= 0.9
+                    temperature *= 0.95
 
                 probabilities = []
             
@@ -939,10 +976,10 @@ def insert_tabu(i, j, k, l, tabu):
 
     # check if the first or the third edge is smaller
     if first < third:
-        tabu[((first, second), (third, fourth))] = 10
+        tabu[((first, second), (third, fourth))] = 5
         
     elif first > third:
-        tabu[((third, fourth), (first, second))] = 10
+        tabu[((third, fourth), (first, second))] = 5
 
     return tabu
 
@@ -985,7 +1022,7 @@ def find_free_edges(free_nodes, tour, fixed_edges):
             node_j = tour[:-1][i + 2 - n]
             # node_k = tour[:-1][i -1]
             if node_j in free_nodes:
-                if (node_i, node_j) not in fixed_edges and (node_j, node_i) not in fixed_edges:
+                if (node_i, node_j) not in fixed_edges:
                     free_edges_current_tour.append(node_i)
                     indeces_edges[node_i] = i
                     # print(node_i, node_j)
