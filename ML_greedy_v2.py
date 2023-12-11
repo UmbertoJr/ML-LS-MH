@@ -429,10 +429,10 @@ class MLGreedy:
                                 node_jn = tour[position_free_nodes[node_jp] + andamento]
                                 if node_jn not in [node_in, node_ip, node_jp]:
                                     if node_jn in free_nodes and (node_jp, node_jn) not in fixed_edges:
+                                        ops += 1
                                         if not tabu_list or check_if_tabu(node_ip, node_in, node_jp, node_jn, tabu_list):
                                             old_cost = distance_matrix[node_ip][node_in] + distance_matrix[node_jp][node_jn]
                                             new_cost = distance_matrix[node_ip][node_jp] + distance_matrix[node_in][node_jn]
-                                            ops += 1
                                             if old_cost - new_cost > 0:
                                                 if TO_PRINT:        
                                                     print("\nLocal Search!")
