@@ -24,22 +24,25 @@ if __name__ == "__main__":
     print(f"Number of processes available: {num_processes}")
         
     # delete all the files in the partial results folder
-    for filename in os.listdir(f'./results/partial_results'):
-        file_path = os.path.join(f'./results/partial_results', filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            print('Failed to delete %s. Reason: %s' % (file_path, e))
+    # for filename in os.listdir(f'./results/partial_results'):
+    #     file_path = os.path.join(f'./results/partial_results', filename)
+    #     try:
+    #         if os.path.isfile(file_path) or os.path.islink(file_path):
+    #             os.unlink(file_path)
+    #         elif os.path.isdir(file_path):
+    #             shutil.rmtree(file_path)
+    #     except Exception as e:
+    #         print('Failed to delete %s. Reason: %s' % (file_path, e))
 
     
     # reader = RandomInstancesGenerator() MLAdd.MLModel.OptimalTour
-    for ml_model in [MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
-                     MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
-                     MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble,
-                     MLAdd.MLModel.OptimalTour, MLAdd.MLModel.RN]:
+    for ml_model in [
+        MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
+         MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
+        MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble,
+        MLAdd.MLModel.OptimalTour, 
+        MLAdd.MLModel.RN
+        ]:
     # for style in ["reduced", "free", "complete"]:
     # for style in ["reduced"]:
         print('\n\n')

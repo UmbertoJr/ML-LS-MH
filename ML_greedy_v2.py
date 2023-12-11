@@ -667,6 +667,11 @@ class MLGreedy:
 
         # find the free edges in the current tour only these edges will be perturbated
         free_edges_current_tour, indeces = find_free_edges(free_nodes, tour_proposal, fixed_edges)
+
+        # if len of free edges is less than 4, set the free edges as a numpy array with all the free edges
+        if len(free_edges_current_tour) < 4:
+            free_edges_current_tour = np.array(free_nodes)
+            indeces = position_free_nodes
         # print("free edges are:")
         # print(free_edges_current_tour)
 
@@ -684,14 +689,14 @@ class MLGreedy:
 
 
         # finally normalize the alpha values
-        alpha_values = [np.round(alpha_dict[node]/sum(alpha_dict.values()),2) for node in free_nodes]
-        alpha_values = [value/sum(alpha_values) for value in alpha_values]
-        for node, value in zip(free_nodes, alpha_values):
-            alpha_dict[node] = value
+        # alpha_values = [np.round(alpha_dict[node]/sum(alpha_dict.values()),2) for node in free_nodes]
+        # alpha_values = [value/sum(alpha_values) for value in alpha_values]
+        # for node, value in zip(free_nodes, alpha_values):
+        #     alpha_dict[node] = value
 
-        # Check if the sum of alpha_values is close to 1
-        if not math.isclose(sum(alpha_values), 1, rel_tol=1e-9):
-            print("Warning: sum of alpha_values is not close to 1")
+        # # Check if the sum of alpha_values is close to 1
+        # if not math.isclose(sum(alpha_values), 1, rel_tol=1e-9):
+        #     print("Warning: sum of alpha_values is not close to 1")
 
         # finally normalize the alpha values
         alpha_probs = [alpha_dict[node] for node in free_edges_current_tour]
@@ -775,7 +780,7 @@ class MLGreedy:
         # restrain the number of iterations to a bilion
         n = len(X)
         ops_used = 0
-        total_iterations_available = n*n*10
+        total_iterations_available = n*n*1000
 
         # copy the initial solution and create tour
         X_c = np.copy(X)
@@ -790,7 +795,7 @@ class MLGreedy:
         tabu_list = {}
 
         # set useful variable to take trac of the ILS iterations
-        temperature = initial_len * 100
+        temperature = initial_len * 200
         counter_temperature = 0
         repeat_temperature = 50
         probabilities = []
@@ -882,10 +887,10 @@ class MLGreedy:
                             f"temperature {temperature}    average prob {avg_probs}   ops used {ops_used}")
                         print()
 
-                    # Here it checks if the solution is optimal in case it breaks the ILS
-                    if opt_len is not None:
-                        if (current_len - opt_len )/opt_len*100< 0.1:
-                            break
+            # Here it checks if the solution is optimal in case it breaks the ILS
+            if opt_len is not None:
+                if (current_len - opt_len )/opt_len*100< 0.01:
+                    break
             
             
             ops_used += ops_plus
@@ -1019,7 +1024,7 @@ def find_free_edges(free_nodes, tour, fixed_edges):
     indeces_edges = {}
     for i, node_i in enumerate(tour[:-1]):
         if node_i in free_nodes:
-            node_j = tour[:-1][i + 2 - n]
+            node_j = tour[:][i + 2 - n]
             # node_k = tour[:-1][i -1]
             if node_j in free_nodes:
                 if (node_i, node_j) not in fixed_edges:
