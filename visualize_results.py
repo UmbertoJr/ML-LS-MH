@@ -1,11 +1,14 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# improvement = "2-Opt-CL"
-improvement = "2-Opt-CL"
-style = "complete"
-# improvement = "ls"
 
+
+# Here we define the method we want to visualize
+improvement = "ILS" # "2-Opt", "2-Opt-CL" or "ILS"
+style = "reduced" # the style of the search can be "complete" or "free", "reduced"
+
+
+# Here we save the number of operations for each method using the complete style for 2-Opt
 ops_tot = {
     "Baseline": 1479935115,
     "Nearest Neighbour": 1048230780,
@@ -16,9 +19,14 @@ ops_tot = {
     "RN": 677453350,
 }
 
-# methods = ["Baseline", "Nearest Neighbour", "Linear", "SVM", 
-#            "Ensemble", "Optimal Tour"]
-methods = ["RN"]
+
+# Here we select the method used for the selection of the most promising edges
+methods = ["Baseline", "Nearest Neighbour", 
+           "Linear", "SVM", 
+           "Ensemble", "RN",
+            "Optimal Tour"]
+
+# methods = ["RN"]
 
 for method in methods:
     df = pd.read_csv(f'./results/{method}_{improvement}_{style}.csv')#, index_col=0)
