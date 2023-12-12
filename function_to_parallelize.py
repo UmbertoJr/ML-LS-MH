@@ -30,13 +30,13 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
     # read file f'./results/partial_results/{name_instance}_{improvement}_{ml_model}.json'
     # if the file exists, return the data in the file and skip the experiment
     # otherwise, run the experiment and save the results in the file
-    if os.path.exists(f'./results/partial_results/{name_instance}_{improvement}_{ml_model}_{style}.json'):
-        with open(f'./results/partial_results/{name_instance}_{improvement}_{ml_model}_{style}.json') as fp:
-            data = json.load(fp)
-        shared_dict[name_instance] = data
-        values = [data[k][0] for k in header]
-        print(format_string.format(*values))
-        return
+    # if os.path.exists(f'./results/partial_results/{name_instance}_{improvement}_{ml_model}_{style}.json'):
+    #     with open(f'./results/partial_results/{name_instance}_{improvement}_{ml_model}_{style}.json') as fp:
+    #         data = json.load(fp)
+    #     shared_dict[name_instance] = data
+    #     values = [data[k][0] for k in header]
+    #     print(format_string.format(*values))
+    #     return
    
     data = {h: [] for h in header}
     # filtered_head = header[:]

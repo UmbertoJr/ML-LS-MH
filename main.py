@@ -37,11 +37,11 @@ if __name__ == "__main__":
     
     # reader = RandomInstancesGenerator() MLAdd.MLModel.OptimalTour
     for ml_model in [
-        MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
-         MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
-        MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble,
+        # MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
+        #  MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
+        # MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble,
         MLAdd.MLModel.OptimalTour, 
-        MLAdd.MLModel.RN
+        # MLAdd.MLModel.RN
         ]:
     # for style in ["reduced", "free", "complete"]:
     # for style in ["reduced"]:
@@ -65,8 +65,8 @@ if __name__ == "__main__":
             n_points, positions, distance_matrix, name, optimal_tour = instance
             
             # check if dimension is less than 700 otherwise skip
-            if n_points > 300:
-                continue
+            # if n_points > 300:
+            #     continue
 
             args.append((name, improvement, ml_model, 
                          cl_method, n_points, positions, 
