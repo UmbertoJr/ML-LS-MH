@@ -52,9 +52,9 @@ for method in methods:
     # ops_columns = df.columns[8+ml_model_col:11+ml_model_col]
     ops_columns = df.columns[6]
     # removed_columns = df.columns[11+ml_model_col:]
-    removed_columns = df.columns[7]
+    removed_columns = df.columns[8]
 
-    first_column = df.columns[8]
+    first_column = df.columns[9]
 
     print("\n\n====================")
     print(f"Method: {method}")

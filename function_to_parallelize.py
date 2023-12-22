@@ -14,7 +14,8 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
     # set priority for the process
     os.nice(0)
 
-    format_string = "{:^15}{:^15}{:^15}{:^20}{:^20}{:^20}{:^20}{:^20}{:^20}"
+    # format_string = "{:^12}{:^18}{:^12}{:^15}{:^15}{:^15}{:^10}{:^18}{:^10}{:^10}"
+    format_string = "{:^10}{:^15}{:^10}{:^15}{:^15}{:^15}{:^12}{:^12}{:^10}{:^10}"
     header = ["Problem", 
               "ML-model",
               "Gap ML-C", 
@@ -22,6 +23,7 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
               "Time ML-C", 
               f"Time {improvement} {style}", 
               f"Operations {improvement} {style}", 
+              f"Best sol at operation {improvement} {style}",
               f"Removed {improvement} {style}", 
               f"First phase edges",
             ]
@@ -34,6 +36,9 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
     #     with open(f'./results/partial_results/{name_instance}_{improvement}_{ml_model}_{style}.json') as fp:
     #         data = json.load(fp)
     #     shared_dict[name_instance] = data
+    #     # print(f"Process {mp.current_process().name} is running {name_instance} "\
+    #     #       f"with {improvement} {style} and {ml_model}...")   
+    #     # print(f"shared_dict[{name_instance}] = {shared_dict[name_instance]}")
     #     values = [data[k][0] for k in header]
     #     print(format_string.format(*values))
     #     return
@@ -100,6 +105,7 @@ def create_results(name_instance, improvement, ml_model, cl_method, n_points,
         f'{experiments_results[f"Time {improvement} {style}"]:.3f} sec', 
         
         experiments_results[f"Ops {improvement} {style}"], 
+        experiments_results[f"Best sol at opertion {improvement} {style}"],
         
         count_removed_fixed_edges_reduced,
         count_first_phase_edges,

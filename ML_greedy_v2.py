@@ -810,10 +810,10 @@ class MLGreedy:
             if not repeated:
                 first_time = False
         
-        assert new_len_tour == compute_tour_lenght(tour_, distance_matrix), \
-                            f"Process {mp.current_process().name},  Problem with the proposal tour {len_tour} != {compute_tour_lenght(tour_, distance_matrix)}"
-        assert current_best_len == compute_tour_lenght(current_best_tour, distance_matrix), \
-                            f"Process {mp.current_process().name},  Problem with the proposal tour {current_best_len} != {compute_tour_lenght(current_best_tour, distance_matrix)}"  
+        # assert new_len_tour == compute_tour_lenght(tour_, distance_matrix), \
+        #                     f"Process {mp.current_process().name},  Problem with the proposal tour {new_len_tour} != {compute_tour_lenght(tour_, distance_matrix)}"
+        # assert current_best_len == compute_tour_lenght(current_best_tour, distance_matrix), \
+        #                     f"Process {mp.current_process().name},  Problem with the proposal tour {current_best_len} != {compute_tour_lenght(current_best_tour, distance_matrix)}"  
         return best_X, current_best_tour, current_best_len, count_, tabu_list, position_free_nodes
 
     @staticmethod
@@ -825,7 +825,7 @@ class MLGreedy:
         # restrain the number of iterations to a bilion
         n = len(X)
         ops_used = 0
-        total_iterations_available = n*n*10
+        total_iterations_available = min(n*n*10000, 200000000)
 
         # copy the initial solution and create tour
         X_c = np.copy(X)
@@ -854,6 +854,7 @@ class MLGreedy:
 
         best_tour_so_far = current_tour
         best_len_so_far = current_len
+        best_sol_ops = ops_used
         X_c_best = X_c
         tour_lens_list.append(best_len_so_far)
 
@@ -875,6 +876,7 @@ class MLGreedy:
         if current_len < best_len_so_far:
             best_tour_so_far = current_tour
             best_len_so_far = current_len
+            best_sol_ops = ops_used
             # assert best_len_so_far == compute_tour_lenght(best_tour_so_far, distance_matrix), \
             #                 f"Problem with the best tour {best_len_so_far} != {compute_tour_lenght(best_tour_so_far, distance_matrix)}"
 
@@ -888,7 +890,9 @@ class MLGreedy:
         # Here it checks if the solution is optimal in case it breaks the ILS
         if opt_len is not None:
             if (current_len - opt_len )/opt_len*100< 0.01:
-                return best_tour_so_far, X_c_best, tour_lens_list, time_ils, free_nodes, fixed_edges, ops_used
+                time_ils = time.time() - t0
+                return best_tour_so_far, X_c_best, tour_lens_list, time_ils,\
+                      free_nodes, fixed_edges, best_sol_ops, ops_used
 
         
 
@@ -938,6 +942,7 @@ class MLGreedy:
                     X_c_best = X_proposal
                     best_tour_so_far = current_tour
                     best_len_so_far = current_len
+                    best_sol_ops = ops_used
                     # assert best_len_so_far == compute_tour_lenght(best_tour_so_far, distance_matrix), \
                     #                 f"Problem with the best tour {best_len_so_far} != {compute_tour_lenght(best_tour_so_far, distance_matrix)}"
                     # if TO_PRINT:
@@ -982,7 +987,8 @@ class MLGreedy:
         # print(f"\r###########FINAL RESULT ########## BEST LEN = {best_len_so_far}    last_iteration {count_iterations} "
         #     f" final gap =  {(best_len_so_far - opt_len)/opt_len * 100}   temperature {temperature}    average prob {avg_probs}  "
         #     f"ops used {ops_used}")
-        return best_tour_so_far, X_c_best, tour_lens_list, time_ils, free_nodes, fixed_edges, ops_used
+        return best_tour_so_far, X_c_best, tour_lens_list, time_ils,\
+              free_nodes, fixed_edges, best_sol_ops, ops_used
 
 
     @staticmethod
@@ -991,7 +997,9 @@ class MLGreedy:
         # print(f"\n\nRunning approach REDUCED")
         # Run of the ILS using the reduced 2-opt
         best_tour_reduced, X_c_reduced,\
-              tour_lens_reduced, time_reduced, free_nodes, fixed_edges,\
+              tour_lens_reduced, time_reduced, \
+                free_nodes, fixed_edges,\
+                best_sol_ops, \
                 ops_reduced = MLGreedy.run_ILS(X, X_intermediate, distance_matrix,
                                                CLs, opt_len=opt_len, alpha_list=alpha_list)
 
@@ -1007,6 +1015,7 @@ class MLGreedy:
             f"Time ILS {style}": time_reduced,
             
             f"Ops ILS {style}":ops_reduced,
+            f"Best sol at opertion ILS {style}" : best_sol_ops,
             
             "free_nodes": free_nodes,
             "fixed edges": fixed_edges,

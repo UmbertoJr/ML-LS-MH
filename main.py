@@ -37,10 +37,13 @@ if __name__ == "__main__":
     
     # reader = RandomInstancesGenerator() MLAdd.MLModel.OptimalTour
     for ml_model in [
-        # MLAdd.MLModel.NearestNeighbour, MLAdd.MLModel.Baseline,
-        #  MLAdd.MLModel.Linear, MLAdd.MLModel.LinearUnderbalance,
-        # MLAdd.MLModel.SVM, MLAdd.MLModel.Ensemble,
-        MLAdd.MLModel.OptimalTour, 
+        # MLAdd.MLModel.NearestNeighbour, 
+        # MLAdd.MLModel.Baseline,
+        # MLAdd.MLModel.Linear, 
+        # MLAdd.MLModel.LinearUnderbalance,
+        MLAdd.MLModel.SVM, 
+        MLAdd.MLModel.Ensemble,
+        # MLAdd.MLModel.OptimalTour, 
         # MLAdd.MLModel.RN
         ]:
     # for style in ["reduced", "free", "complete"]:
@@ -80,19 +83,34 @@ if __name__ == "__main__":
 
 
 
-        format_string = "{:^15}{:^15}{:^15}{:^20}{:^20}{:^20}{:^20}{:^20}{:^20}"
-        header = ["Problem", 
-                "ML-model",
-                "Gap ML-C", 
-                f"Gap {improvement} {style}", 
-                "Time ML-C", 
-                f"Time {improvement} {style}", 
-                f"Operations {improvement} {style}", 
-                f"Removed {improvement} {style}", 
-                f"First phase edges",
-                ]
+        format_string = "{:^10}{:^15}{:^10}{:^15}{:^15}{:^15}{:^12}{:^12}{:^10}{:^10}"
+        header = [
+            "Problem", 
+            "ML-model",
+            "Gap ML-C", 
+            f"Gap {improvement} {style}", 
+            "Time ML-C", 
+            f"Time {improvement} {style}", 
+            f"Operations {improvement} {style}", 
+            f"Best sol at operation {improvement} {style}",
+            f"Removed {improvement} {style}", 
+            f"First phase edges",
+            ]
         data = {h: [] for h in header}
-        print(format_string.format(*header))
+
+        header_modified = [
+            "Problem", 
+            "ML-model",
+            "Gap ML-C", 
+            f"Gap {improvement} {style}", 
+            "Time ML-C", 
+            f"Time", 
+            f"Operations", 
+            f"* at op",
+            f"Removed", 
+            f"1st phase",
+            ]
+        print(format_string.format(*header_modified))
 
         # Now the parallelization using multiprocessing starmap
         with mp.Pool(processes=num_processes) as pool:
