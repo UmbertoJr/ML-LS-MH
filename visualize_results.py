@@ -21,10 +21,13 @@ ops_tot = {
 
 
 # Here we select the method used for the selection of the most promising edges
-methods = ["Baseline", "Nearest Neighbour", 
-           "Linear", "SVM", 
-           "Ensemble", "RN",
-            "Optimal Tour"]
+methods = ["Baseline", 
+           "Nearest Neighbour", 
+           "Linear", 
+           "SVM", 
+           "Ensemble", 
+           "RN",
+           "Optimal Tour"]
 
 # methods = ["RN"]
 
